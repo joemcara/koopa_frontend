@@ -1,46 +1,33 @@
-// src/components/SubjectCard.jsx
+// src/components/ui/SubjectCard.jsx
+"use client";
 
-export default function SubjectCard({ codigo, nombre, color, nivel }) {
+export default function SubjectCard({
+  codigo,
+  nombre,
+  color,
+  nivel,
+  onClick,
+}) {
   return (
-<div
-  style={{
-    borderRadius: "12px",
-    padding: "12px 14px",
-    backgroundColor: "#ffffff",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-    borderTop: `4px solid ${color || "#22c55e"}`,
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    width: "280px",
-    maxWidth: "280px",
-    flex: "0 0 280px",
-  }}
->
-      <div
-        style={{
-          fontSize: "10px",
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          color: "#9ca3af",
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-full flex-col rounded-xl bg-white text-left shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
+      style={{
+        borderTop: `4px solid ${color || "#22c55e"}`,
+        width: "280px",
+        maxWidth: "280px",
+        flex: "0 0 280px",
+        padding: "12px 14px",
+      }}
+    >
+      <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
         <span>{codigo}</span>
-        {nivel && <span style={{ fontWeight: 500 }}>{nivel}</span>}
+        {nivel && <span>{nivel}</span>}
       </div>
-
-      <div
-        style={{
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "#111827",
-          lineHeight: 1.2,
-        }}
-      >
+      <div className="text-[13px] font-semibold leading-snug text-zinc-900">
         {nombre}
       </div>
-    </div>
+    </button>
   );
 }
