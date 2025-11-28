@@ -139,7 +139,7 @@ export default function MallaCurricular() {
               />
             </div>
           </div>
-      <div>
+      <div style={{ width: "100%" , height: "100%", marginTop: "32px" }}>
 
       <SubjectsView subjects={materiasFromBackend}/>
       </div>
