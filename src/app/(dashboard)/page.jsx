@@ -147,6 +147,15 @@ export default function Home() {
     { name: "Estadística", cantidad: 120 },
   ]);
 
+  const [subjectsDataCant, setSubjectsDataCant] = useState([
+    { name: "Fund. Programación", cantidad: 387 },
+    { name: "Cálculo 1 Var.", cantidad: 349 },
+    { name: "Álgebra Lineal", cantidad: 250 },
+    { name: "Física Mecánica", cantidad: 180 },
+    { name: "Estadística", cantidad: 120 },
+  ]);
+
+
   // 🔥 FUNCIÓN DE FETCH (Simulada para backend)
 const fetchData = async () => {
     setIsLoading(true);
@@ -204,13 +213,24 @@ const fetchData = async () => {
                 valor: cantidad_ingresos[index] || 0 // Usamos el índice para buscar el valor correspondiente
               }))
       );
-
-
       
         setSubjectsData(
           (data.materias_mayor_reprobacion || []).map((m) => ({
             name: m.nombre_materia || "Desconocido",
             cantidad: m.reprobados ?? 0,
+          }))
+        );
+        setSubjectsDataCant(
+          (data.materias_mas_pobladas || []).map((m) => ({
+            name: m.nombreMateria || "Desconocido",
+            cantidad: m.cantidadInscritos ?? 0,
+          }))
+        );
+        setPerformanceData(
+          (data.rendimiento_carrera || []).map((r) => ({
+            name: r.nombre_carrera || "Desconocido",
+            Aprobado: r.aprobados ?? 0,
+            Reprobado: r.reprobados ?? 0,
           }))
         );
       
@@ -371,7 +391,7 @@ const fetchData = async () => {
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-col gap-3">
-                            {subjectsData.map((m, i) => (
+                            {subjectsDataCant.map((m, i) => (
                                 <div key={i} className="flex items-center gap-3 text-sm">
                                     <div className="w-32 truncate text-muted-foreground text-xs">{m.name}</div>
                                     <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
