@@ -4,151 +4,98 @@ import { useEffect, useState } from "react";
 import SubjectsView from "./SubjectsView";
 import { BookOpen, Search } from "lucide-react";
 
-// 👇 Simula la respuesta del backend
-// En producción aquí harías: const res = await fetch("/api/materias");
-const materiasFromBackend = [
-  {
-    id: 1,
-    codigo: "MATG1045",
-    nombre: "SISTEMAS OPERATIVOS",
-    nivel: "NIVEL 300 I",
-    color: "#22c55e",
-    // datos para el gráfico
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 72, reprobados: 18 },
-      { periodo: "II PAO 2023", inscripciones: 70, reprobados: 22 },
-      { periodo: "I PAO 2024", inscripciones: 85, reprobados: 20 },
-      { periodo: "II PAO 2024", inscripciones: 78, reprobados: 14 },
-      { periodo: "I PAO 2025", inscripciones: 88, reprobados: 30 },
-      { periodo: "II PAO 2025", inscripciones: 65, reprobados: 35 },
-    ],
-    // datos para las tarjetas de abajo
-    stats: {
-      reprobados: 25,
-      reprobadosPorcentaje: 0.2, // 20%
-      aprobaronRequisitos: 27,
-      habilitados: 30,
-      descripcion:
-        "Se estima que al cierre del II PAO 2025, 82 estudiantes se inscribirán en la materia de sistemas operativos en el PAO 2026.",
-      notaPie: "Información del II PAO 2025",
-    },
-  },
-  {
-    id: 2,
-    codigo: "MATG1045",
-    nombre: "CÁLCULO I",
-    nivel: "NIVEL 100 I",
-    color: "#22c55e",
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 90, reprobados: 30 },
-      { periodo: "II PAO 2023", inscripciones: 95, reprobados: 28 },
-      { periodo: "I PAO 2024", inscripciones: 92, reprobados: 25 },
-      { periodo: "II PAO 2024", inscripciones: 88, reprobados: 20 },
-      { periodo: "I PAO 2025", inscripciones: 94, reprobados: 22 },
-      { periodo: "II PAO 2025", inscripciones: 91, reprobados: 21 },
-    ],
-    stats: {
-      reprobados: 30,
-      reprobadosPorcentaje: 0.25,
-      aprobaronRequisitos: 40,
-      habilitados: 35,
-      descripcion: "Tendencia histórica de inscripciones y reprobación en Cálculo I.",
-      notaPie: "Datos históricos 2023–2025",
-    },
-  },
-  {
-    id: 3,
-    codigo: "MATG1045",
-    nombre: "ÁLGEBRA LINEAL",
-    nivel: "NIVEL 100 II",
-    color: "#22c55e",
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 60, reprobados: 15 },
-      { periodo: "II PAO 2023", inscripciones: 62, reprobados: 14 },
-      { periodo: "I PAO 2024", inscripciones: 65, reprobados: 13 },
-      { periodo: "II PAO 2024", inscripciones: 67, reprobados: 11 },
-      { periodo: "I PAO 2025", inscripciones: 70, reprobados: 10 },
-      { periodo: "II PAO 2025", inscripciones: 72, reprobados: 9 },
-    ],
-    stats: {
-      reprobados: 10,
-      reprobadosPorcentaje: 0.14,
-      aprobaronRequisitos: 50,
-      habilitados: 45,
-      descripcion: "Mejora progresiva en el rendimiento de Álgebra Lineal.",
-      notaPie: "Información consolidada 2023–2025",
-    },
-  },
-];
-
 export default function MallaCurricular() {
   const [subjects, setSubjects] = useState([]);
   const [careers, setCareers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedCareerId, setSelectedCareerId] = useState("2");
+  
+  // INICIALIZACIÓN: Asegúrate de que este ID inicial exista en tu BD
+  const [selectedCareerId, setSelectedCareerId] = useState("2"); 
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 1. FETCH DE CARRERAS
+  const fetchCarreras = async () => {
+    try {
+      const BASE_URL = "http://localhost:8080"; 
+      const response = await fetch(`${BASE_URL}/api/carreras`);
+      const data = await response.json();
+      console.log("🎓 Carreras cargadas:", data); // Mira esto en la consola (F12)
+      setCareers(data);
+    } catch (err) {
+      console.error("❌ Error cargando carreras:", err);
+    }
+  };
+
+  // 2. FETCH DE MATERIAS (Malla)
   const fetchMaterias = async () => {
+    if (!selectedCareerId) return; // No hacer nada si no hay ID
+
     setLoading(true);
+    setSubjects([]); // 🔥 IMPORTANTE: Limpiamos la malla anterior visualmente
     setError(null);
+
     try {
       const BASE_URL = "http://localhost:8080"; 
       const url = `${BASE_URL}/api/materias/malla-stats/${selectedCareerId}`;
-      console.log("📡 Cargando malla:", url);
+      
+      console.log(`📡 Fetching Malla para ID: ${selectedCareerId} -> URL: ${url}`);
+      
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Error ${response.status}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setSubjects(data);
+      console.log(`✅ Malla recibida (${data.length} materias):`, data);
+
+      // Mapeo seguro de datos
+      const mappedSubjects = data.map(m => ({
+        id: m.id || m.Id || Math.random(),
+        codigo: m.codigo || m.CodigoMateria || "S/C",
+        nombre: m.nombre || m.NombreMateria || "Materia Sin Nombre",
+        nivel: m.nivel || m.Nivel || "Nivel Desconocido",
+        color: m.color || "#2563eb",
+        rendimiento: m.rendimiento || [],
+        stats: m.stats || { descripcion: "Sin datos", reprobados: 0 }
+      }));
+
+      setSubjects(mappedSubjects);
+
     } catch (err) {
-      console.error("❌ Error:", err);
-      setError("No se pudo cargar la malla. Verifica la conexión.");
-      setSubjects([]);
+      console.error("❌ Error en fetchMaterias:", err);
+      setError("Error al cargar la malla.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCarreras = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const BASE_URL = "http://localhost:8080"; 
-      const url = `${BASE_URL}/api/carreras`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Error ${response.status}`);
-      const data = await response.json();
-      setCareers(data);
-    } catch (err) {
-      console.error("❌ Error:", err);
-      setError("No se pudo cargar la malla. Verifica la conexión.");
-      setCareers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
+  // Carga inicial de carreras
   useEffect(() => {
     fetchCarreras();
   }, []);
 
+  // 🔥 DETECTOR DE CAMBIOS: Se ejecuta cada vez que cambia selectedCareerId
   useEffect(() => {
+    console.log("🔄 useEffect disparado por cambio de carrera a:", selectedCareerId);
     fetchMaterias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCareerId]);
 
 
-  // USEe
+  // Filtro de búsqueda local
+  const filteredSubjects = subjects.filter((materia) =>
+    (materia.nombre?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (materia.codigo?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+  );
 
-  // const filteredSubjects = subjects.filter((materia) =>
-  //   materia.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  // );
-
-  // useEffect(() => {
-  //   const filteredSubjects = subjects.filter((materia) =>
-  //   materia.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  // );
-  // }, [selectedCareerId]);
+  // Manejador del cambio en el Select
+  const handleCareerChange = (e) => {
+    const nuevoId = e.target.value;
+    console.log("🖱️ Usuario seleccionó carrera ID:", nuevoId);
+    setSelectedCareerId(nuevoId);
+  };
 
   return (
     <div className="flex justify-center bg-zinc-50 font-sans min-h-screen">
@@ -159,24 +106,38 @@ export default function MallaCurricular() {
             <BookOpen className="w-8 h-8 text-blue-600" />
             Malla Curricular
           </h1>
-          <p className="text-muted-foreground">
-            Visualización gráfica del plan de estudios.
-          </p>
+          <p className="text-muted-foreground">Visualización gráfica del plan de estudios.</p>
         </div>
 
+        {/* CONTROLES */}
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
+          
+          {/* SELECTOR DE CARRERA */}
           <div className="w-full md:w-auto">
             <select
               value={selectedCareerId}
-              onChange={(e) => setSelectedCareerId(e.target.value)}
+              onChange={handleCareerChange} // Usamos la función handleCareerChange
               disabled={loading}
               className="w-full md:w-64 appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
-              { careers.map((c) => (
-                <option key={`${c.nombreCarrera}${c.codCarrera}`} value={c.codCarrera}>{c.nombreCarrera}</option>
-              ))}
+              {careers.length === 0 && <option value="2">Cargando carreras...</option>}
+              
+              {careers.map((c) => {
+                // 🔥 AQUI ESTA LA CLAVE: Asegurarnos de usar el ID correcto
+                // Verifica en tu consola si tus carreras tienen 'codCarrera', 'id' o 'Id'
+                const idValue = c.codCarrera || c.id || c.Id; 
+                const label = c.nombreCarrera || c.nombre || c.Nombre;
+                
+                return (
+                  <option key={idValue} value={String(idValue)}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
+          
+          {/* BUSCADOR */}
           <div className="w-full md:flex-1 md:max-w-md relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
@@ -189,17 +150,36 @@ export default function MallaCurricular() {
           </div>
         </div>
 
-        <div className={`transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-          {loading && subjects.length === 0 && (
-             <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>
+        {/* AREA DE CONTENIDO */}
+        <div className={`transition-opacity duration-300`}>
+          
+          {/* Spinner de Carga */}
+          {loading && (
+             <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                <p className="text-sm text-zinc-500">Cargando malla...</p>
+             </div>
           )}
 
-          {!loading && subjects.length === 0 && !error && (
-            <div className="text-center py-16 text-zinc-500">No se encontraron materias.</div>
+          {/* Mensaje de Error */}
+          {error && !loading && (
+             <div className="text-center py-16 text-red-500 bg-red-50 rounded-xl border border-red-100">
+                <p>{error}</p>
+             </div>
           )}
 
-          {subjects.length > 0 && (
-            <SubjectsView subjects={subjects} />
+          {/* Mensaje Vacío */}
+          {!loading && !error && filteredSubjects.length === 0 && (
+            <div className="text-center py-16 text-zinc-500">
+               {searchTerm 
+                 ? `No hay materias que coincidan con "${searchTerm}"` 
+                 : "No se encontraron materias para esta carrera."}
+            </div>
+          )}
+
+          {/* VISTA DE MATERIAS */}
+          {!loading && !error && filteredSubjects.length > 0 && (
+            <SubjectsView subjects={filteredSubjects} />
           )}
         </div>
       </main>
