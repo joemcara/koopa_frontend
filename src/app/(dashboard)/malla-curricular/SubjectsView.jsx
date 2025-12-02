@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -549,7 +549,7 @@ const SubjectNode = ({ data, selected }) => {
   const selectionStyle = selected ? 'ring-2 ring-indigo-500 ring-offset-2' : '';
 
   return (
-    <div className={`relative flex h-24 w-60 flex-col justify-between rounded-lg border bg-white p-3 shadow-sm transition-all dark:bg-zinc-900 ${config.border} ${selectionStyle}`}>
+    <div className={`relative flex h-24 w-58 flex-col justify-between rounded-lg border bg-white p-3 shadow-sm transition-all dark:bg-zinc-900 ${config.border} ${selectionStyle}`}>
       <Handle type="target" position={Position.Top} className="!opacity-0" />
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{data.codigo}</span>
@@ -564,49 +564,49 @@ const nodeTypes = { subject: SubjectNode };
 
 // --- 4. LOGICA DE LAYOUT ---
 const transformDataToFlow = (materias) => {
-  const COL_WIDTH = 280;
+  const COL_WIDTH = 260;
   const ROW_HEIGHT = 150; 
   const levels = [...new Set(materias.map(m => m.nivel))].sort();
   const nodes = [];
   const edges = [];
   const levelCounters = {}; 
-
   materias.forEach((materia) => {
     const levelIndex = levels.indexOf(materia.nivel);
     if (!levelCounters[levelIndex]) levelCounters[levelIndex] = 0;
-    
     const posX = levelCounters[levelIndex] * COL_WIDTH;
     const posY = levelIndex * ROW_HEIGHT;
     levelCounters[levelIndex]++; 
 
     nodes.push({
-      id: materia.id,
+      id: String(materia.id),
       type: 'subject',
       position: { x: posX, y: posY },
       data: { ...materia },
     });
+    if (materia.preRequisitos) {
 
-    if (materia.prerequisitos) {
-      materia.prerequisitos.forEach(preId => {
-        edges.push({
-          id: `e-${preId}-${materia.id}`,
-          source: preId,
-          target: materia.id,
-          type: 'smoothstep',
-          style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#cbd5e1' },
-        });
+      materia.preRequisitos.forEach(preId => {
+       
+          edges.push({
+            id: `e-${preId}-${materia.id}`,
+            source: String(preId),
+            target: String(materia.id),
+            type: 'smoothstep',
+            style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#cbd5e1' },
+          });
       });
     }
   });
   return { nodes, edges };
 };
 
-export default function MallaCurricular() {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => transformDataToFlow(materiasFromBackend), []);
+export default function MallaCurricular({subjects}) {
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => transformDataToFlow(subjects), []);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState(null);
+  
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
@@ -620,7 +620,7 @@ export default function MallaCurricular() {
         <h1 className="text-sm font-bold text-zinc-500">Malla Curricular - Ingeniería</h1>
       </div>
 
-      <div className="relative h-full w-full bg-zinc-50 dark:bg-zinc-950">
+      <div className="relative h-full w-full bg-zinc-50 dark:bg-zinc-950 py-4 overflow-auto ">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -631,9 +631,16 @@ export default function MallaCurricular() {
           nodesDraggable={false}       
           panOnDrag={true}            
           zoomOnScroll={true}         
-          zoomOnPinch={true}          
-          zoomOnDoubleClick={false}    
-          fitView                      
+          zoomOnPinch={false}          
+          zoomOnDoubleClick={false}  
+          preventScrolling={true}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          
+          // Ocultar atribución (proOptions es la forma correcta moderna)
+          proOptions={{ hideAttribution: true }}
+          // 👇 AJUSTE AUTOMÁTICO AL CONTENEDOR
+          // padding: 0 asegura que el grafo ocupe TODO el espacio disponible del div padre.
+          // El espacio en blanco lo controlas con el padding CSS del div padre.
         />
 
         {/* MODAL / POP UP */}
