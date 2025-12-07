@@ -6,9 +6,9 @@ import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription
 } from "@/components/ui/card";
 import {
   Select,
@@ -35,12 +35,11 @@ import {
   RiShieldCheckLine,
   RiGraduationCapLine,
   RiTrophyLine,
-  RiLoader4Line // Agregué un icono de carga opcional
 } from "@remixicon/react";
 
-// --- COMPONENTE: GRÁFICO DE BARRAS NATIVO ---
+// --- COMPONENTE: GRÁFICO DE BARRAS NATIVO (INTACTO) ---
 const NativeBarChart = ({ data, colorAprobado, colorReprobado }) => {
-  const maxValue = Math.max(...data.map((d) => d.Aprobado + d.Reprobado)) || 1; // Evitar división por 0
+  const maxValue = Math.max(...data.map((d) => (d.Aprobado || 0) + (d.Reprobado || 0))) || 1;
 
   return (
     <div className="w-full flex flex-col gap-4 mt-2">
@@ -57,25 +56,33 @@ const NativeBarChart = ({ data, colorAprobado, colorReprobado }) => {
 
       <div className="flex flex-col gap-3">
         {data.map((item, index) => {
-          const pctReprobado = (item.Reprobado / maxValue) * 100;
-          const pctAprobado = (item.Aprobado / maxValue) * 100;
+          const aprobado = item.Aprobado || 0;
+          const reprobado = item.Reprobado || 0;
+          const pctReprobado = (reprobado / maxValue) * 100;
+          const pctAprobado = (aprobado / maxValue) * 100;
 
           return (
-            <div key={index} className="grid grid-cols-[100px_1fr] items-center gap-4 text-sm">
+            <div key={index} className="grid grid-cols-[130px_1fr] items-center gap-4 text-sm">
               <span className="text-muted-foreground font-medium truncate text-xs" title={item.name}>
                 {item.name}
               </span>
+              
               <div className="h-6 flex w-full bg-secondary/30 rounded-sm overflow-hidden">
                 <div
                   style={{ width: `${pctReprobado}%`, backgroundColor: colorReprobado }}
-                  className="h-full flex items-center justify-center"
-                  title={`Reprobado: ${item.Reprobado}`}
-                />
+                  className="h-full flex items-center justify-center transition-all duration-500 overflow-hidden"
+                  title={`Reprobado: ${reprobado}`}
+                >
+                   {reprobado > 0 && <span className="text-white text-[10px] font-bold px-1">{reprobado}</span>}
+                </div>
+
                 <div
                   style={{ width: `${pctAprobado}%`, backgroundColor: colorAprobado }}
-                  className="h-full flex items-center justify-center"
-                  title={`Aprobado: ${item.Aprobado}`}
-                />
+                  className="h-full flex items-center justify-center transition-all duration-500 overflow-hidden"
+                  title={`Aprobado: ${aprobado}`}
+                >
+                   {aprobado > 0 && <span className="text-white text-[10px] font-bold px-1">{aprobado}</span>}
+                </div>
               </div>
             </div>
           );
@@ -91,8 +98,8 @@ export default function Home() {
   const secondaryColor = "#2563eb";
   const accentColor = "#6366f1";
 
-  // DATOS ESTÁTICOS DE LISTAS
   const careersList = [
+    { id: "all", name: "Todas las carreras" },
     { id: 1, name: "Ciencia de Datos e Inteligencia Artificial" },
     { id: 2, name: "Computación" },
     { id: 3, name: "Electricidad" },
@@ -102,72 +109,46 @@ export default function Home() {
   ];
 
   const periodsList = [
+    { value: "all", label: "2023 - 2025" },
     { value: "2025-1S", label: "2025 - I" },
     { value: "2024-2S", label: "2024 - II" },
     { value: "2024-1S", label: "2024 - I" },
     { value: "2023-2S", label: "2023 - II" },
   ];
 
-  // 🔥 CAMBIO 1: DEFAULTS CORREGIDOS
-  // Inicializamos en "2" (Computación) y "2025-1S"
-  const [selectedCareerId, setSelectedCareerId] = useState("2");
-  const [selectedPeriod, setSelectedPeriod] = useState("2025-1S");
-  const [isLoading, setIsLoading] = useState(false); // Estado para feedback visual de carga
+  const [selectedCareerId, setSelectedCareerId] = useState("all");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ESTADOS DE DATOS (Se actualizarán al conectar backend)
+  // ESTADOS DE DATOS
+  // subMetric almacenará el porcentaje
   const [kpis, setKpis] = useState([
-    { title: "Estudiantes", metric: "1,240", icon: RiUserLine },
-    { title: "Tasa de reprobación", metric: "15%", icon: RiShieldCheckLine },
-    { title: "Tasa de graduados", metric: "42%", icon: RiGraduationCapLine },
-    { title: "Promedio de carrera", metric: "7.8", icon: RiTrophyLine },
+    { title: "Estudiantes", metric: "0", subMetric: null, icon: RiUserLine },
+    { title: "Reprobación", metric: "0", subMetric: "0%", icon: RiShieldCheckLine }, 
+    { title: "Graduados", metric: "0", subMetric: "0%", icon: RiGraduationCapLine },
+    { title: "Promedio Global", metric: "0.00", subMetric: null, icon: RiTrophyLine },
   ]);
 
-  const [performanceData, setPerformanceData] = useState([
-    { name: "Computación", Aprobado: 36, Reprobado: 15 },
-    { name: "Telecomunicaciones", Aprobado: 28, Reprobado: 15 },
-    { name: "Telemática", Aprobado: 12, Reprobado: 25 },
-    { name: "Electricidad", Aprobado: 40, Reprobado: 10 },
-    { name: "Automatización", Aprobado: 32, Reprobado: 18 },
-    { name: "Ciencia de Datos", Aprobado: 20, Reprobado: 5 },
-  ]);
+  const [performanceData, setPerformanceData] = useState([]);
+  const [financeData, setFinanceData] = useState([]);
+  const [subjectsData, setSubjectsData] = useState([]);
+  const [subjectsDataCant, setSubjectsDataCant] = useState([]);
 
-  const [financeData, setFinanceData] = useState([
-    { periodo: "2023-I", valor: 400 },
-    { periodo: "2023-II", valor: 180 },
-    { periodo: "2024-I", valor: 650 },
-    { periodo: "2024-II", valor: 700 },
-    { periodo: "2025-I", valor: 1500 },
-  ]);
-
-  const [subjectsData, setSubjectsData] = useState([
-    { name: "Fund. Programación", cantidad: 387 },
-    { name: "Cálculo 1 Var.", cantidad: 349 },
-    { name: "Álgebra Lineal", cantidad: 250 },
-    { name: "Física Mecánica", cantidad: 180 },
-    { name: "Estadística", cantidad: 120 },
-  ]);
-
-  const [subjectsDataCant, setSubjectsDataCant] = useState([
-    { name: "Fund. Programación", cantidad: 387 },
-    { name: "Cálculo 1 Var.", cantidad: 349 },
-    { name: "Álgebra Lineal", cantidad: 250 },
-    { name: "Física Mecánica", cantidad: 180 },
-    { name: "Estadística", cantidad: 120 },
-  ]);
-
-
-  // 🔥 FUNCIÓN DE FETCH (Simulada para backend)
-const fetchData = async () => {
+  // --- FUNCIÓN FETCH DATA ---
+  const fetchData = async () => {
     setIsLoading(true);
 
-    // 1. Preparamos los parámetros
-    // El frontend tiene "2025-1S", el backend quiere anio="2025" y termino="1S"
-    const [anio, termino] = selectedPeriod.split("-");
-
     try {
-      // 2. Construimos la URL
-      // Nota: Usamos 'codCarrera' porque así lo pide tu Swagger
-      const url = `http://localhost:8080/api/metricas/dashboard?anio=${anio}&termino=${termino}&codCarrera=${selectedCareerId}`;
+      let url = `http://localhost:8080/api/metricas/dashboard?`;
+      
+      if (selectedCareerId !== "all") {
+        url += `&codCarrera=${selectedCareerId}`;
+      }
+
+      if (selectedPeriod !== "all") {
+        const [anio, termino] = selectedPeriod.split("-");
+        url += `&anio=${anio}&termino=${termino}`;
+      }
       
       console.log("📡 Fetching:", url);
       
@@ -180,65 +161,63 @@ const fetchData = async () => {
       const data = await response.json();
       console.log("📦 Respuesta Backend:", data);
 
-      // --- 3. TRANSFORMACIÓN DE DATOS (Mapping) ---
-
+      // --- MAPPINGS ---
+      
       setKpis([
         { 
           title: "Estudiantes", 
           metric: data.cant_estudiantes?.toLocaleString() || "0", 
+          subMetric: null, 
           icon: RiUserLine 
         },
         { 
-          title: "Tasa de reprobación", 
-          metric: `${data.tasa_reprobacion || 0}%`, 
+          // 🔥 CAMBIO: Metric = Total (Grande), SubMetric = Tasa (Pequeño)
+          title: "Reprobación", 
+          metric: data.total_reprobados?.toLocaleString() || "0", 
+          subMetric: `${data.tasa_reprobacion || 0}%`,            
           icon: RiShieldCheckLine 
         },
         { 
-          title: "Tasa de graduados", 
-          metric: `${data.tasa_graduados || 0}%`, 
+          // 🔥 CAMBIO: Metric = Total (Grande), SubMetric = Tasa (Pequeño)
+          title: "Graduados", 
+          metric: data.total_graduados?.toLocaleString() || "0",  
+          subMetric: `${data.tasa_graduados || 0}%`,              
           icon: RiGraduationCapLine 
         },
         { 
-          title: "Promedio de carrera", 
+          title: "Promedio Global", 
           metric: data.promedio_carrera?.toFixed(2) || "0.00", 
+          subMetric: null, 
           icon: RiTrophyLine 
         },
       ]);
 
-      let cantidad_ingresos = data.evolucion_ingresos.cantidad_ingresos || [];
-      let periodos = data.evolucion_ingresos.periodos || [];
-      setFinanceData(
-              periodos.map((p, index) => ({
-                periodo: p,
-                valor: cantidad_ingresos[index] || 0 // Usamos el índice para buscar el valor correspondiente
-              }))
-      );
+      const cantidad_ingresos = data.evolucion_ingresos?.cantidad_ingresos || [];
+      const periodos = data.evolucion_ingresos?.periodos || [];
+      if (periodos.length > 0) {
+        setFinanceData(periodos.map((p, index) => ({ periodo: p, valor: cantidad_ingresos[index] || 0 })));
+      } else {
+        setFinanceData([]);
+      }
       
-        setSubjectsData(
-          (data.materias_mayor_reprobacion || []).map((m) => ({
-            name: m.nombre_materia || "Desconocido",
-            cantidad: m.reprobados ?? 0,
-          }))
-        );
-        setSubjectsDataCant(
-          (data.materias_mas_pobladas || []).map((m) => ({
-            name: m.nombreMateria || "Desconocido",
-            cantidad: m.cantidadInscritos ?? 0,
-          }))
-        );
-        setPerformanceData(
-          (data.rendimiento_carrera || []).map((r) => ({
-            name: r.nombre_carrera || "Desconocido",
-            Aprobado: r.aprobados ?? 0,
-            Reprobado: r.reprobados ?? 0,
-          }))
-        );
-      
+      setSubjectsData((data.materias_mayor_reprobacion || []).map((m) => ({
+          name: m.nombre_materia || "Desconocido",
+          cantidad: m.reprobados ?? m.cantidad ?? 0, 
+      })));
 
+      setSubjectsDataCant((data.materias_mas_pobladas || []).map((m) => ({
+          name: m.nombreMateria || m.nombre_materia || "Desconocido",
+          cantidad: m.cantidadInscritos ?? m.cantidad ?? 0,
+      })));
+
+      setPerformanceData((data.rendimiento_carrera || []).map((r) => ({
+          name: r.nombre_carrera || "Desconocido",
+          Aprobado: r.aprobados ?? 0,
+          Reprobado: r.reprobados ?? 0,
+      })));
 
     } catch (error) {
       console.error("❌ Error conectando al backend:", error);
-      // Aquí podrías poner un Toast de error si quieres
     } finally {
       setIsLoading(false);
     }
@@ -264,93 +243,86 @@ const fetchData = async () => {
           </div>
           
           <div className="flex gap-3">
-            {/* SELECT CARRERA (Controlado por selectedCareerId) */}
-            <Select 
-                value={selectedCareerId} 
-                onValueChange={(val) => setSelectedCareerId(val)}
-            >
-              <SelectTrigger className="w-[240px] bg-white">
-                <SelectValue placeholder="Seleccionar carrera" />
-              </SelectTrigger>
+            <Select value={selectedCareerId} onValueChange={setSelectedCareerId}>
+              <SelectTrigger className="w-[240px] bg-white"><SelectValue placeholder="Carrera" /></SelectTrigger>
               <SelectContent>
-                {careersList.map((carrera) => (
-                    <SelectItem key={carrera.id} value={String(carrera.id)}>
-                        {carrera.name}
-                    </SelectItem>
-                ))}
+                {careersList.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            {/* SELECT PERIODO (Controlado por selectedPeriod) */}
-            <Select 
-                value={selectedPeriod} 
-                onValueChange={(val) => setSelectedPeriod(val)}
-            >
-              <SelectTrigger className="w-[140px] bg-white">
-                <SelectValue placeholder="Periodo" />
-              </SelectTrigger>
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger className="w-[140px] bg-white"><SelectValue placeholder="Periodo" /></SelectTrigger>
               <SelectContent>
-                {periodsList.map((periodo) => (
-                    <SelectItem key={periodo.value} value={periodo.value}>
-                        {periodo.label}
-                    </SelectItem>
-                ))}
+                {periodsList.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* CONTENIDO PRINCIPAL (Con opacidad si está cargando) */}
+        {/* CONTENIDO PRINCIPAL */}
         <div className={`transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
             
-            {/* KPIS */}
+            {/* 1. KPIS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {kpis.map((item) => (
-                <Card key={item.title} className="relative overflow-hidden shadow-sm border-zinc-200">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {item.title}
-                    </CardTitle>
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                    <div className="text-2xl font-bold text-[#0B0E31]">{item.metric}</div>
-                    </CardContent>
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#0B0E31] to-transparent opacity-10"></div>
-                </Card>
-            ))}
+              {kpis.map((item) => (
+                  <Card key={item.title} className="relative overflow-hidden shadow-sm border-zinc-200">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{item.title}</CardTitle>
+                        <item.icon className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        {/* 🔥 VISUALIZACIÓN DE MÉTRICAS */}
+                        <div className="flex items-baseline gap-2">
+                            {/* Número Principal (Total) */}
+                            <span className="text-2xl font-bold text-[#0B0E31]">
+                                {item.metric}
+                            </span>
+                            
+                            {/* Porcentaje (Pequeño y gris) */}
+                            {item.subMetric && (
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    {item.subMetric}
+                                </span>
+                            )}
+                        </div>
+                      </CardContent>
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#0B0E31] to-transparent opacity-10"></div>
+                  </Card>
+              ))}
             </div>
 
-            {/* GRÁFICOS */}
+            {/* 2. GRÁFICOS GRANDES */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                
+                {/* A. RENDIMIENTO */}
                 <Card className="shadow-sm border-zinc-200">
                     <CardHeader>
-                    <CardTitle className="text-lg text-[#0B0E31]">Rendimiento por Carrera</CardTitle>
-                    <CardDescription>Aprobados vs Reprobados</CardDescription>
+                      <CardTitle className="text-lg text-[#0B0E31]">Rendimiento por Carrera</CardTitle>
+                      <CardDescription>Aprobados vs Reprobados</CardDescription>
                     </CardHeader>
                     <CardContent>
-                    <NativeBarChart 
-                        data={performanceData} 
-                        colorReprobado={mainColor} 
-                        colorAprobado={secondaryColor} 
-                    />
+                      <NativeBarChart 
+                          data={performanceData} 
+                          colorReprobado={mainColor} 
+                          colorAprobado={secondaryColor} 
+                      />
                     </CardContent>
                 </Card>
 
+                {/* B. INGRESOS */}
                 <Card className="shadow-sm border-zinc-200">
                     <CardHeader>
-                    <CardTitle className="text-lg text-[#0B0E31]">Evolución de Ingresos</CardTitle>
-                    <CardDescription>Tendencia financiera semestral</CardDescription>
+                      <CardTitle className="text-lg text-[#0B0E31]">Evolución de Ingresos</CardTitle>
+                      <CardDescription>Tendencia financiera semestral</CardDescription>
                     </CardHeader>
                     <CardContent>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={financeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>
-                            <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={accentColor} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
-                            </linearGradient>
+                              <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={accentColor} stopOpacity={0.2}/>
+                                  <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
+                              </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                             <XAxis dataKey="periodo" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#666'}} tickMargin={10} />
@@ -364,12 +336,10 @@ const fetchData = async () => {
                 </Card>
             </div>
 
-            {/* MATERIAS */}
+            {/* 3. LISTAS DE MATERIAS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <Card className="shadow-sm border-zinc-200">
-                    <CardHeader>
-                        <CardTitle className="text-base text-[#0B0E31]">Materias con mayor reprobación</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-base text-[#0B0E31]">Materias con mayor reprobación</CardTitle></CardHeader>
                     <CardContent>
                         <div className="flex flex-col gap-3">
                             {subjectsData.map((m, i) => (
@@ -386,9 +356,7 @@ const fetchData = async () => {
                 </Card>
 
                 <Card className="shadow-sm border-zinc-200">
-                    <CardHeader>
-                        <CardTitle className="text-base text-[#0B0E31]">Materias más pobladas</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-base text-[#0B0E31]">Materias más pobladas</CardTitle></CardHeader>
                     <CardContent>
                         <div className="flex flex-col gap-3">
                             {subjectsDataCant.map((m, i) => (
@@ -406,7 +374,6 @@ const fetchData = async () => {
             </div>
 
         </div>
-
       </main>
     </div>
   );
