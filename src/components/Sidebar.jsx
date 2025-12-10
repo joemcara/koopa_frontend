@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { name: "Estadísticas", path: "/", icon: "📊" },
+  { name: "Estadísticas", path: "/home", icon: "📊" },
   { name: "Malla Curricular", path: "/malla-curricular", icon: "🕸️" },
 ];
 
