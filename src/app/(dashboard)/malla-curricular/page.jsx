@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import SubjectsView from "./SubjectsView";
 import { BookOpen, Search } from "lucide-react";
+import { Icon, Select } from "@radix-ui/react-select";
+import CustomSelect from "@/components/ui/CustomSelect";
+import { useGlobalStore } from "@/store/globalStore";
+import CustomInput from "@/components/ui/CustomInput";
 
 export default function MallaCurricular() {
+  const globalStore = useGlobalStore();
   const [subjects, setSubjects] = useState([]);
   const [careers, setCareers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,10 +23,16 @@ export default function MallaCurricular() {
   const fetchCarreras = async () => {
     try {
       const BASE_URL = "http://localhost:8080"; 
-      const response = await fetch(`${BASE_URL}/api/carreras`);
+      const response = await fetch(`${BASE_URL}/api/filtros`);
+      console.log(BASE_URL)
       const data = await response.json();
       console.log("🎓 Carreras cargadas:", data); // Mira esto en la consola (F12)
-      setCareers(data);
+      globalStore.setCarreras(data.carreras || []); // Actualiza el store global
+      globalStore.setSemestres(data.semestres || []); // Actualiza el store global
+      console.log(data.semestres[0]?.value)
+      globalStore.setSemestreSeleccionado(data.semestres[0]?.id || 'all');
+      globalStore.setCarreraSeleccionada(data.carreras[0]?.id || 'all');
+
     } catch (err) {
       console.error("❌ Error cargando carreras:", err);
     }
@@ -30,11 +41,10 @@ export default function MallaCurricular() {
   // 2. FETCH DE MATERIAS (Malla)
   const fetchMaterias = async () => {
     if (!selectedCareerId) return; // No hacer nada si no hay ID
-
     setLoading(true);
     setSubjects([]); // 🔥 IMPORTANTE: Limpiamos la malla anterior visualmente
     setError(null);
-
+    
     try {
       const BASE_URL = "http://localhost:8080"; 
       const url = `${BASE_URL}/api/materias/malla-stats/${selectedCareerId}`;
@@ -42,6 +52,7 @@ export default function MallaCurricular() {
       console.log(`📡 Fetching Malla para ID: ${selectedCareerId} -> URL: ${url}`);
       
       const response = await fetch(url);
+      console.log(response)
       
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
@@ -49,6 +60,7 @@ export default function MallaCurricular() {
       
       const data = await response.json();
       console.log(`✅ Malla recibida (${data.length} materias):`, data);
+      
 
       // Mapeo seguro de datos
       const mappedSubjects = data.map(m => ({
@@ -97,6 +109,7 @@ export default function MallaCurricular() {
     setSelectedCareerId(nuevoId);
   };
 
+
   return (
     <div className="flex justify-center bg-zinc-50 font-sans min-h-screen">
       <main className="w-full max-w-7xl p-6 md:p-8">
@@ -113,40 +126,45 @@ export default function MallaCurricular() {
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
           
           {/* SELECTOR DE CARRERA */}
-          <div className="w-full md:w-auto">
-            <select
-              value={selectedCareerId}
-              onChange={handleCareerChange} // Usamos la función handleCareerChange
-              disabled={loading}
-              className="w-full md:w-64 appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              {careers.length === 0 && <option value="2">Cargando carreras...</option>}
-              
-              {careers.map((c) => {
-                // 🔥 AQUI ESTA LA CLAVE: Asegurarnos de usar el ID correcto
-                // Verifica en tu consola si tus carreras tienen 'codCarrera', 'id' o 'Id'
-                const idValue = c.codCarrera || c.id || c.Id; 
-                const label = c.nombreCarrera || c.nombre || c.Nombre;
-                
-                return (
-                  <option key={idValue} value={String(idValue)}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
+          <div className="w-full md:w-auto gap-4 flex flex-col md:flex-row">
+            <CustomSelect
+              label="Carrera"
+              value={globalStore.carreraSeleccionada}
+              data={globalStore.carreras}
+              onChange={globalStore.setCarreraSeleccionada}
+              placeholder="Selecciona una carrera"
+            />
+            <CustomSelect
+              label="Periodo"
+              value={globalStore.semestreSeleccionado}
+              data={globalStore.semestres}
+              onChange={globalStore.setSemestreSeleccionado}
+              placeholder="Selecciona un periodo"
+            />
+
+            
           </div>
           
           {/* BUSCADOR */}
           <div className="w-full md:flex-1 md:max-w-md relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
+              
+              {/* <input
                 type="text"
                 placeholder="Buscar materia..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              /> */}
+              {/* <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /> */}
+              
+              <CustomInput
+                label=""
+                type="text" 
+                value={globalStore.searchTerm}
+                onChange={(e) => globalStore.setSearchTerm(e.target.value)}
+                placeholder="Buscar materia..."
               />
+
           </div>
         </div>
 
