@@ -1,205 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import SubjectsView from "./SubjectsView";
-import { BookOpen, Search } from "lucide-react";
-import { Icon, Select } from "@radix-ui/react-select";
-import CustomSelect from "@/components/ui/CustomSelect";
-import { useGlobalStore } from "@/store/globalStore";
-import CustomInput from "@/components/ui/CustomInput";
+// Asegúrate de importar los componentes de shadcn donde los tengas guardados
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Definimos la lista SIN la opción "all"
+const careersList = [
+  { id: 1, name: "Ciencia de Datos e Inteligencia Artificial" },
+  { id: 2, name: "Computación" },
+  { id: 3, name: "Electricidad" },
+  { id: 4, name: "Electrónica y Automatización" },
+  { id: 5, name: "Telecomunicaciones" },
+  { id: 6, name: "Telemática" },
+];
 
 export default function MallaCurricular() {
-  const globalStore = useGlobalStore();
-  const [subjects, setSubjects] = useState([]);
-  const [careers, setCareers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // INICIALIZACIÓN: Asegúrate de que este ID inicial exista en tu BD
-  const [selectedCareerId, setSelectedCareerId] = useState("2"); 
-  const [searchTerm, setSearchTerm] = useState("");
+  // 1. ESTADO INICIAL: Ponemos "2" (Computación) por defecto para que siempre haya una carrera seleccionada.
+  const [selectedCareerId, setSelectedCareerId] = useState("2");
+  const [materias, setMaterias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroNombre, setFiltroNombre] = useState("");
 
-  // 1. FETCH DE CARRERAS
-  const fetchCarreras = async () => {
-    try {
-      const BASE_URL = "http://localhost:8080"; 
-      const response = await fetch(`${BASE_URL}/api/filtros`);
-      console.log(BASE_URL)
-      const data = await response.json();
-      console.log("🎓 Carreras cargadas:", data); // Mira esto en la consola (F12)
-      globalStore.setCarreras(data.carreras || []); // Actualiza el store global
-      globalStore.setSemestres(data.semestres || []); // Actualiza el store global
-      console.log(data.semestres[0]?.value)
-      globalStore.setSemestreSeleccionado(data.semestres[0]?.id || 'all');
-      globalStore.setCarreraSeleccionada(data.carreras[0]?.id || 'all');
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true); // Ponemos loading cada vez que cambia la carrera
+      try {
+        // 2. PETICIÓN AL BACKEND: Enviamos el ID de la carrera seleccionada
+        // Ajusta el param (?carrera=...) según como lo espere tu API
+        const response = await fetch(`http://localhost:8080/api/materias/malla-stats/${selectedCareerId}`);
+        
+        if (!response.ok) throw new Error("Error al cargar datos");
+        
+        const data = await response.json();
 
-    } catch (err) {
-      console.error("❌ Error cargando carreras:", err);
-    }
-  };
+        // Procesamiento de datos (igual que antes)
+        const materiasProcesadas = data.map((materia) => {
+          const datosGrafico = materia.rendimiento.map((r) => {
+            const infoPeriodo = materia.stats[r.periodo];
+            return {
+              ...r,
+              nombrePeriodo: infoPeriodo ? infoPeriodo.descripcion : r.periodo,
+            };
+          });
 
-  // 2. FETCH DE MATERIAS (Malla)
-  const fetchMaterias = async () => {
-    if (!selectedCareerId) return; // No hacer nada si no hay ID
-    setLoading(true);
-    setSubjects([]); // 🔥 IMPORTANTE: Limpiamos la malla anterior visualmente
-    setError(null);
-    
-    try {
-      const BASE_URL = "http://localhost:8080"; 
-      const url = `${BASE_URL}/api/materias/malla-stats/${selectedCareerId}`;
-      
-      console.log(`📡 Fetching Malla para ID: ${selectedCareerId} -> URL: ${url}`);
-      
-      const response = await fetch(url);
-      console.log(response)
-      
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+          const periodosKeys = Object.keys(materia.stats).sort((a, b) => Number(a) - Number(b));
+          const ultimoPeriodoKey = periodosKeys[periodosKeys.length - 1];
+          const infoActual = materia.stats[ultimoPeriodoKey] || {};
+
+          return {
+            ...materia,
+            datosGrafico,
+            infoActual
+          };
+        });
+
+        setMaterias(materiasProcesadas);
+      } catch (error) {
+        console.error(error);
+        setMaterias([]); // Limpiamos si hay error
+      } finally {
+        setLoading(false);
       }
-      
-      const data = await response.json();
-      console.log(`✅ Malla recibida (${data.length} materias):`, data);
-      
+    };
 
-      // Mapeo seguro de datos
-      const mappedSubjects = data.map(m => ({
-        id: m.id || m.Id || Math.random(),
-        codigo: m.codigo || m.CodigoMateria || "S/C",
-        nombre: m.nombre || m.NombreMateria || "Materia Sin Nombre",
-        nivel: m.nivel || m.Nivel || "Nivel Desconocido",
-        color: m.color || "#2563eb",
-        rendimiento: m.rendimiento || [],
-        stats: m.stats || { descripcion: "Sin datos", reprobados: 0 }
-      }));
+    fetchData();
+  }, [selectedCareerId]); // <--- IMPORTANTE: El efecto se dispara cuando cambia el ID
 
-      setSubjects(mappedSubjects);
-
-    } catch (err) {
-      console.error("❌ Error en fetchMaterias:", err);
-      setError("Error al cargar la malla.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carga inicial de carreras
-  useEffect(() => {
-    fetchCarreras();
-  }, []);
-
-  // 🔥 DETECTOR DE CAMBIOS: Se ejecuta cada vez que cambia selectedCareerId
-  useEffect(() => {
-    console.log("🔄 useEffect disparado por cambio de carrera a:", selectedCareerId);
-    fetchMaterias();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCareerId]);
-
-
-  // Filtro de búsqueda local
-  const filteredSubjects = subjects.filter((materia) =>
-    (materia.nombre?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (materia.codigo?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-  );
-
-  // Manejador del cambio en el Select
-  const handleCareerChange = (e) => {
-    const nuevoId = e.target.value;
-    console.log("🖱️ Usuario seleccionó carrera ID:", nuevoId);
-    setSelectedCareerId(nuevoId);
-  };
-
+  // Filtrado local solo por nombre (la carrera ya la filtra el backend)
+  const materiasFiltradas = useMemo(() => {
+    return materias.filter((m) =>
+      m.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+    );
+  }, [materias, filtroNombre]);
 
   return (
-    <div className="flex justify-center bg-zinc-50 font-sans min-h-screen">
-      <main className="w-full max-w-7xl p-6 md:p-8">
+    <div className="justify-center bg-zinc-50 font-sans dark:bg-black min-h-screen">
+      <main style={{ padding: "24px" }}>
         
-        <div className="flex flex-col gap-2 mb-8">
-          <h1 className="text-3xl font-bold text-[#0B0E31] flex items-center gap-2">
-            <BookOpen className="w-8 h-8 text-blue-600" />
-            Malla Curricular
-          </h1>
-          <p className="text-muted-foreground">Visualización gráfica del plan de estudios.</p>
-        </div>
-
-        {/* CONTROLES */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
+        <div className="flex gap-4 items-center mt-8 mb-6 pr-6 flex-wrap">
           
-          {/* SELECTOR DE CARRERA */}
-          <div className="w-full md:w-auto gap-4 flex flex-col md:flex-row">
-            <CustomSelect
-              label="Carrera"
-              value={globalStore.carreraSeleccionada}
-              data={globalStore.carreras}
-              onChange={globalStore.setCarreraSeleccionada}
-              placeholder="Selecciona una carrera"
-            />
-            <CustomSelect
-              label="Periodo"
-              value={globalStore.semestreSeleccionado}
-              data={globalStore.semestres}
-              onChange={globalStore.setSemestreSeleccionado}
-              placeholder="Selecciona un periodo"
-            />
+          {/* 3. TU COMPONENTE SELECT (SHADCN UI) */}
+          <Select value={selectedCareerId} onValueChange={setSelectedCareerId}>
+            <SelectTrigger className="w-[280px] bg-white rounded-full border-gray-200">
+              <SelectValue placeholder="Seleccionar carrera" />
+            </SelectTrigger>
+            <SelectContent>
+              {careersList.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            
-          </div>
-          
-          {/* BUSCADOR */}
-          <div className="w-full md:flex-1 md:max-w-md relative">
-              
-              {/* <input
-                type="text"
-                placeholder="Buscar materia..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              /> */}
-              {/* <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /> */}
-              
-              <CustomInput
-                label=""
-                type="text" 
-                value={globalStore.searchTerm}
-                onChange={(e) => globalStore.setSearchTerm(e.target.value)}
-                placeholder="Buscar materia..."
-              />
-
+          {/* Input de búsqueda por nombre */}
+          <div className="relative flex-1 max-w-[400px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar materia..."
+              value={filtroNombre}
+              onChange={(e) => setFiltroNombre(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-full border border-gray-200 text-sm outline-none focus:border-black transition-colors"
+            />
           </div>
         </div>
 
-        {/* AREA DE CONTENIDO */}
-        <div className={`transition-opacity duration-300`}>
-          
-          {/* Spinner de Carga */}
-          {loading && (
-             <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                <p className="text-sm text-zinc-500">Cargando malla...</p>
-             </div>
-          )}
-
-          {/* Mensaje de Error */}
-          {error && !loading && (
-             <div className="text-center py-16 text-red-500 bg-red-50 rounded-xl border border-red-100">
-                <p>{error}</p>
-             </div>
-          )}
-
-          {/* Mensaje Vacío */}
-          {!loading && !error && filteredSubjects.length === 0 && (
-            <div className="text-center py-16 text-zinc-500">
-               {searchTerm 
-                 ? `No hay materias que coincidan con "${searchTerm}"` 
-                 : "No se encontraron materias para esta carrera."}
-            </div>
-          )}
-
-          {/* VISTA DE MATERIAS */}
-          {!loading && !error && filteredSubjects.length > 0 && (
-            <SubjectsView subjects={filteredSubjects} />
-          )}
-        </div>
+        {loading ? (
+          <div className="p-10 text-center text-gray-500 animate-pulse">
+            Cargando malla de {careersList.find(c => String(c.id) === selectedCareerId)?.name}...
+          </div>
+        ) : (
+          <SubjectsView subjects={materiasFiltradas} />
+        )}
       </main>
     </div>
   );
