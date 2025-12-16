@@ -13,35 +13,22 @@ import SubjectList from "@/components/dashboard/SubjectList";
 
 export default function Home() {
   // --- CONFIGURACIÓN DE COLORES ---
-  const mainColor = "#0B0E31";      // Azul Oscuro (Reprobado / Top Reprobación)
-  const secondaryColor = "#2563eb"; // Azul Brillante (Aprobado / Top Pobladas)
-  const accentColor = "#6366f1";    // Indigo (Ingresos)
+  const mainColor = "#0B0E31";      
+  const secondaryColor = "#2563eb"; 
+  const accentColor = "#6366f1";    
 
-  // --- DATOS ESTÁTICOS ---
-  const careersList = [
-    { id: "all", name: "Todas las carreras" },
-    { id: 1, name: "Ciencia de Datos e Inteligencia Artificial" },
-    { id: 2, name: "Computación" },
-    { id: 3, name: "Electricidad" },
-    { id: 4, name: "Electrónica y Automatización" },
-    { id: 5, name: "Telecomunicaciones" },
-    { id: 6, name: "Telemática" },
-  ];
+  // --- ESTADOS DE FILTROS ---
+  const [careersList, setCareersList] = useState([]);
+  const [periodsList, setPeriodsList] = useState([]);
 
-  const periodsList = [
-    { value: "all", label: "2023 - 2025" },
-    { value: "2025-1S", label: "2025 - I" },
-    { value: "2024-2S", label: "2024 - II" },
-    { value: "2024-1S", label: "2024 - I" },
-    { value: "2023-2S", label: "2023 - II" },
-  ];
-
-  // --- ESTADOS ---
+  // --- ESTADOS DE SELECCIÓN ---
+  // Usaremos el ID como valor del estado para garantizar unicidad (ej: "PAO 2025-1")
   const [selectedCareerId, setSelectedCareerId] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
+  
   const [isLoading, setIsLoading] = useState(false);
 
-  // Estados de Datos
+  // Estados de Datos del Dashboard
   const [kpis, setKpis] = useState([
     { title: "Estudiantes", metric: "0", subMetric: null, icon: RiUserLine },
     { title: "Reprobación", metric: "0", subMetric: "0%", icon: RiShieldCheckLine },
@@ -54,26 +41,60 @@ export default function Home() {
   const [subjectsData, setSubjectsData] = useState([]);
   const [subjectsDataCant, setSubjectsDataCant] = useState([]);
 
-  // --- FETCH DATA ---
+  // --- 1. CARGAR FILTROS ---
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/filtros");
+        if (!response.ok) throw new Error("Error cargando filtros");
+        const data = await response.json();
+
+        setCareersList(data.carreras || []);
+        setPeriodsList(data.semestres || []);
+      } catch (error) {
+        console.error("❌ Error cargando filtros:", error);
+      }
+    };
+
+    fetchFilters();
+  }, []);
+
+  // --- 2. CARGAR DASHBOARD ---
   const fetchData = async () => {
     setIsLoading(true);
     try {
       let url = `http://localhost:8080/api/metricas/dashboard?`;
 
-      if (selectedCareerId !== "all") url += `&codCarrera=${selectedCareerId}`;
-      if (selectedPeriod !== "all") {
-        const [anio, termino] = selectedPeriod.split("-");
-        url += `&anio=${anio}&termino=${termino}`;
+      // Filtro de Carrera
+      if (selectedCareerId !== "all") {
+        url += `&codCarrera=${selectedCareerId}`;
       }
 
-      console.log("📡 Fetching:", url);
+      // Filtro de Periodo
+      if (selectedPeriod !== "all") {
+        // Buscamos el objeto completo basado en el ID seleccionado (ej: "PAO 2023-1")
+        const periodoObj = periodsList.find(p => p.id === selectedPeriod);
+        
+        if (periodoObj) {
+            // Lógica: 
+            // 1. Extraemos el AÑO del 'id' (el texto visible tiene el año: "PAO 2023-1" -> "2023")
+            // 2. Usamos el 'value' del JSON para el TÉRMINO (ej: "1S")
+            
+            const yearMatch = periodoObj.id.match(/(\d{4})/);
+            const anio = yearMatch ? yearMatch[0] : null;
+            const termino = periodoObj.value.slice(-2); // Aquí va el "1S", "2S", etc.
+
+            if (anio) url += `&anio=${anio}`;
+            if (termino) url += `&termino=${termino}`;
+        }
+      }
+
+      console.log("📡 Fetching Dashboard:", url);
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
       const data = await response.json();
-      console.log("📦 Respuesta Backend:", data);
 
-      // --- MAPPINGS ---
-      // 1. KPIs
+      // --- MAPPINGS (Igual que antes) ---
       setKpis([
         { title: "Estudiantes", metric: data.cant_estudiantes?.toLocaleString() || "0", subMetric: null, icon: RiUserLine },
         { title: "Reprobación", metric: data.total_reprobados?.toLocaleString() || "0", subMetric: `${data.tasa_reprobacion || 0}%`, icon: RiShieldCheckLine },
@@ -81,16 +102,14 @@ export default function Home() {
         { title: "Promedio Global", metric: data.promedio_carrera?.toFixed(2) || "0.00", subMetric: null, icon: RiTrophyLine },
       ]);
 
-      // 2. Ingresos
       const cantidad_ingresos = data.evolucion_ingresos?.cantidad_ingresos || [];
-      const periodos = data.evolucion_ingresos?.periodos || [];
-      if (periodos.length > 0) {
-        setFinanceData(periodos.map((p, index) => ({ periodo: p, valor: cantidad_ingresos[index] || 0 })));
-      } else {
-        setFinanceData([]);
-      }
+      const periodosChart = data.evolucion_ingresos?.periodos || [];
+      
+      setFinanceData(periodosChart.length > 0 
+        ? periodosChart.map((p, index) => ({ periodo: p, valor: cantidad_ingresos[index] || 0 })) 
+        : []
+      );
 
-      // 3. Materias
       setSubjectsData((data.materias_mayor_reprobacion || []).map((m) => ({
         name: m.nombre_materia || "Desconocido",
         cantidad: m.reprobados ?? m.cantidad ?? 0,
@@ -101,7 +120,6 @@ export default function Home() {
         cantidad: m.cantidadInscritos ?? m.cantidad ?? 0,
       })));
 
-      // 4. Rendimiento
       setPerformanceData((data.rendimiento_carrera || []).map((r) => ({
         name: r.nombre_carrera || "Desconocido",
         Aprobado: r.aprobados ?? 0,
@@ -134,16 +152,34 @@ export default function Home() {
           </div>
 
           <div className="flex gap-3">
+            {/* SELECT DE CARRERAS */}
             <Select value={selectedCareerId} onValueChange={setSelectedCareerId}>
-              <SelectTrigger className="w-[240px] bg-white"><SelectValue placeholder="Carrera" /></SelectTrigger>
+              <SelectTrigger className="w-[240px] bg-white">
+                <SelectValue placeholder="Carrera" />
+              </SelectTrigger>
               <SelectContent>
-                {careersList.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                {careersList.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.value}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+
+            {/* SELECT DE PERIODOS (Modificado) */}
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-[140px] bg-white"><SelectValue placeholder="Periodo" /></SelectTrigger>
+              <SelectTrigger className="w-[180px] bg-white">
+                <SelectValue placeholder="Periodo" />
+              </SelectTrigger>
               <SelectContent>
-                {periodsList.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                {periodsList.map((p) => (
+                  // KEY y VALUE usan 'p.id' (ej: "PAO 2025-1") porque es único.
+                  // 'p.value' ("1S") se repite, así que no sirve como identificador de selección.
+                  // CHILDREN usa 'p.id' para MOSTRAR el texto "PAO 2025-1".
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.id === "all" ? p.value : p.id}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -152,7 +188,6 @@ export default function Home() {
         {/* CONTENIDO PRINCIPAL */}
         <div className={`transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
           
-          {/* 1. KPIS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((item, index) => (
               <KpiCard 
@@ -165,7 +200,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* 2. GRÁFICOS GRANDES */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <PerformanceChart 
               data={performanceData} 
@@ -178,7 +212,6 @@ export default function Home() {
             />
           </div>
 
-          {/* 3. LISTAS DE MATERIAS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <SubjectList 
               title="Materias con mayor reprobación" 

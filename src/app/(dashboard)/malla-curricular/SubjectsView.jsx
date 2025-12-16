@@ -6,7 +6,6 @@ import SubjectStatsModal from "@/components/ui/SubjectStatsModal";
 
 function groupByNivel(lista) {
   return lista.reduce((acc, materia) => {
-    // Usamos el string tal cual viene del back como clave (ej: "100I")
     if (!acc[materia.nivel]) acc[materia.nivel] = [];
     acc[materia.nivel].push(materia);
     return acc;
@@ -19,19 +18,28 @@ function romanToInt(roman) {
   return map[roman.toUpperCase()] ?? 0;
 }
 
-// ---------------------------------------------------------
-// NUEVA LÓGICA DE PARSEO PARA "100I", "200II", etc.
-// ---------------------------------------------------------
 function parseNivel(nivelStr) {
-  // Regex busca: Un numero al inicio (\d+) seguido opcionalmente de letras ([A-Z]*)
   const match = nivelStr.match(/^(\d+)([A-Z]*)/i);
-  
-  if (!match) return { numero: 9999, subnivel: 0 }; // Si falla, lo mandamos al final
-  
+  if (!match) return { numero: 9999, subnivel: 0 };
   const numero = parseInt(match[1], 10);
   const subnivel = romanToInt(match[2]); 
-  
   return { numero, subnivel };
+}
+
+// Función auxiliar para obtener inscritos del último periodo
+function getUltimosInscritos(stats) {
+  if (!stats) return 0;
+  
+  // Obtenemos las llaves ("1", "2", "12") y ordenamos numéricamente
+  const periodos = Object.keys(stats).sort((a, b) => Number(a) - Number(b));
+  
+  if (periodos.length === 0) return 0;
+  
+  // Tomamos la última llave (ej: "12")
+  const ultimoPeriodo = periodos[periodos.length - 1];
+  
+  // Retornamos los inscritos de ese periodo
+  return stats[ultimoPeriodo]?.inscritos || 0;
 }
 
 export default function SubjectsView({ subjects }) {
@@ -42,10 +50,7 @@ export default function SubjectsView({ subjects }) {
   const nivelesOrdenados = Object.keys(materiasPorNivel).sort((a, b) => {
     const na = parseNivel(a);
     const nb = parseNivel(b);
-    
-    // Primero ordenamos por el número (100 vs 200)
     if (na.numero !== nb.numero) return na.numero - nb.numero;
-    // Si son iguales, ordenamos por el subnivel romano (I vs II)
     return na.subnivel - nb.subnivel;
   });
 
@@ -60,25 +65,34 @@ export default function SubjectsView({ subjects }) {
 
               return (
                 <div key={nivel} style={{ display: "flex", alignItems: "flex-start", gap: "16px", minWidth: "max-content" }}>
-                  {/* Etiqueta lateral del Nivel */}
                   <div style={{ width: "100px", fontSize: "12px", fontWeight: 700, color: "#6b7280", paddingTop: "20px", textAlign: "right", paddingRight: "10px" }}>
                     NIVEL {nivel}
                   </div>
 
                   <div style={{ display: "flex", flexWrap: "nowrap", gap: "16px" }}>
-                    {listaMaterias.map((m) => (
-                      <SubjectCard
-                        key={m.id}
-                        codigo={m.codigo}
-                        nombre={m.nombre}
-                        color={m.color}
-                        nivel={m.nivel}
-                        // Nota: Asegúrate de que SubjectCard sepa manejar las props que le mandas.
-                        // Si SubjectCard usa 'stats' para mostrar algo resumen, usa 'statsResumen' que creamos arriba
-                        // o ajusta SubjectCard para leer el nuevo formato.
-                        onClick={() => setSelectedSubject(m)}
-                      />
-                    ))}
+                    {listaMaterias.map((m) => {
+                      
+                      // CALCULAMOS EL VALOR AQUÍ
+                      const inscritosActuales = getUltimosInscritos(m.stats);
+
+                      return (
+                        <SubjectCard
+                          key={m.id}
+                          // Si SubjectCard espera "codigo" para mostrar el ID visualmente,
+                          // puedes reemplazarlo aquí o pasar una prop nueva.
+                          // En este caso, paso 'inscritos' como prop explícita.
+                          codigo={inscritosActuales} 
+                          nombre={m.nombre}
+                          color={m.color}
+                          nivel={m.nivel}
+                          
+                          // 👇 PASAMOS EL DATO CALCULADO
+                          inscritos={inscritosActuales}
+                          
+                          onClick={() => setSelectedSubject(m)}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               );

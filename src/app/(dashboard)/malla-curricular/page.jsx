@@ -34,7 +34,7 @@ export default function MallaCurricular() {
       try {
         // 2. PETICIÓN AL BACKEND: Enviamos el ID de la carrera seleccionada
         // Ajusta el param (?carrera=...) según como lo espere tu API
-        const response = await fetch(`http://localhost:8080/api/materias/malla-stats/${selectedCareerId}`);
+        const response = await fetch(`http://localhost:8080/api/materias/malla-stats?codCarrera=${selectedCareerId}`);
         
         if (!response.ok) throw new Error("Error al cargar datos");
         
