@@ -3,41 +3,60 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const USERS = {
-  admin: { password: "123", permiso: 1 },
-  coord_compu: { password: "123", permiso: 2 },
-};
+// Usa una variable de entorno si existe, si no, cae a localhost:8080
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [usuario, setUsuario] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    const user = USERS[usuario.trim()];
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombreUsuario: usuario.trim(),
+          password: contrasena,
+        }),
+      });
 
-    if (!user || user.password !== contrasena) {
-      setError("Usuario o contraseña incorrectos.");
-      return;
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        setError(data?.message || "Usuario o contraseña incorrectos.");
+        return;
+      }
+
+      // Guarda info básica en localStorage para el resto de la app
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "koopa_user",
+          JSON.stringify({
+            usuario: data.nombreUsuario ?? usuario.trim(),
+            codCarrera: data.codCarrera ?? null,
+          })
+        );
+      }
+
+      // Redirige al dashboard (ajusta si quieres otra ruta)
+      router.push("/home");
+    } catch (err) {
+      console.error("Error al iniciar sesión:", err);
+      setError("No se pudo conectar con el servidor. Intenta nuevamente.");
+    } finally {
+      setIsLoading(false);
     }
-
-    // Guarda info básica en localStorage (la puedes leer después en el dashboard)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "koopa_user",
-        JSON.stringify({
-          usuario,
-          permiso: user.permiso,
-        })
-      );
-    }
-
-    // Redirige al dashboard (ajusta si quieres otra ruta)
-    router.push("/home");
   };
 
   return (
@@ -105,24 +124,12 @@ export default function LoginScreen() {
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm py-2.5 mt-1 transition-colors"
+              disabled={isLoading}
+              className="w-full rounded-xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold text-sm py-2.5 mt-1 transition-colors"
             >
-              Ingresar
+              {isLoading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
-        </div>
-
-        {/* Credenciales de prueba */}
-        <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-xs text-slate-600">
-          <p className="font-semibold mb-1">Credenciales de prueba:</p>
-          <p>
-            <span className="font-medium">Admin:</span> <code>admin / 123</code>{" "}
-            → permiso <code>1</code>
-          </p>
-          <p>
-            <span className="font-medium">Coord:</span>{" "}
-            <code>coord_compu / 123</code> → permiso <code>2</code>
-          </p>
         </div>
       </div>
     </div>

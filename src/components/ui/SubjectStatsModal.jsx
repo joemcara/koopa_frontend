@@ -51,6 +51,7 @@ export default function SubjectStatsModal({ open, onClose, subject }) {
     const periodosKeys = Object.keys(subject.stats).sort((a, b) => Number(a) - Number(b));
     const ultimoKey = periodosKeys[periodosKeys.length - 1];
     const ultimaInfo = subject.stats[ultimoKey] || {};
+    console.log(datosProcesados);
 
     return { datosGrafico: datosProcesados, infoActual: ultimaInfo };
   }, [subject]);
