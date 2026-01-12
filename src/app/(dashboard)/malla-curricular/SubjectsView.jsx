@@ -4,7 +4,8 @@ import { useState } from "react";
 import SubjectCard from "@/components/ui/SubjectCard";
 import SubjectStatsModal from "@/components/ui/SubjectStatsModal";
 
-function groupByNivel(lista) {
+function groupByNivel(listaMaterias) {
+  let lista = listaMaterias.filter(m => m.nombre !== "N/A" && m.nivel !== "N/A");
   return lista.reduce((acc, materia) => {
     if (!acc[materia.nivel]) acc[materia.nivel] = [];
     acc[materia.nivel].push(materia);
@@ -50,6 +51,7 @@ export default function SubjectsView({ subjects }) {
   const nivelesOrdenados = Object.keys(materiasPorNivel).sort((a, b) => {
     const na = parseNivel(a);
     const nb = parseNivel(b);
+  
     if (na.numero !== nb.numero) return na.numero - nb.numero;
     return na.subnivel - nb.subnivel;
   });

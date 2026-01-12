@@ -10,12 +10,19 @@ import KpiCard from "@/components/dashboard/KpiCard";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import FinanceChart from "@/components/dashboard/FinanceChart";
 import SubjectList from "@/components/dashboard/SubjectList";
+import { useUserStore } from "@/store/userStore";
+import { useGlobalStore } from "@/store/globalStore";
 
 export default function Home() {
   // --- CONFIGURACIÓN DE COLORES ---
   const mainColor = "#0B0E31";      
   const secondaryColor = "#2563eb"; 
-  const accentColor = "#6366f1";    
+  const accentColor = "#6366f1";
+
+  const userStore = useUserStore();
+
+  const globalStore = useGlobalStore();
+
 
   // --- ESTADOS DE FILTROS ---
   const [careersList, setCareersList] = useState([]);
@@ -41,21 +48,29 @@ export default function Home() {
   const [subjectsData, setSubjectsData] = useState([]);
   const [subjectsDataCant, setSubjectsDataCant] = useState([]);
 
+
+
+
+
   // --- 1. CARGAR FILTROS ---
   useEffect(() => {
     const fetchFilters = async () => {
       try {
+        if (globalStore.carreras.length !== 0 && globalStore.anios.length !== 0 && globalStore.terminos.length !== 0) return;
+
         const response = await fetch("http://localhost:8080/api/filtros");
+
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
+        
+        globalStore.setCarreras(data.carreras || []);
+        globalStore.setAnios(data.anios || []);
+        globalStore.setTerminos(data.terminos || []);
 
-        setCareersList(data.carreras || []);
-        setPeriodsList(data.semestres || []);
       } catch (error) {
         console.error("❌ Error cargando filtros:", error);
       }
     };
-
     fetchFilters();
   }, []);
 
@@ -66,39 +81,28 @@ export default function Home() {
       let url = `http://localhost:8080/api/metricas/dashboard?`;
 
       // Filtro de Carrera
-      if (selectedCareerId !== "all") {
-        url += `&codCarrera=${selectedCareerId}`;
+      if (globalStore.carreraSeleccionada !== "all") {
+        url += `&codCarrera=${globalStore.carreraSeleccionada}`;
       }
 
       // Filtro de Periodo
-      if (selectedPeriod !== "all") {
-        // Buscamos el objeto completo basado en el ID seleccionado (ej: "PAO 2023-1")
-        const periodoObj = periodsList.find(p => p.id === selectedPeriod);
-        
-        if (periodoObj) {
-            // Lógica: 
-            // 1. Extraemos el AÑO del 'id' (el texto visible tiene el año: "PAO 2023-1" -> "2023")
-            // 2. Usamos el 'value' del JSON para el TÉRMINO (ej: "1S")
-            
-            const yearMatch = periodoObj.id.match(/(\d{4})/);
-            const anio = yearMatch ? yearMatch[0] : null;
-            const termino = periodoObj.value.slice(-2); // Aquí va el "1S", "2S", etc.
-
-            if (anio) url += `&anio=${anio}`;
-            if (termino) url += `&termino=${termino}`;
-        }
+      if (globalStore.anioSeleccionado !== "all") {
+        url += `&anio=${globalStore.anioSeleccionado}`;
       }
 
-      console.log("📡 Fetching Dashboard:", url);
+      if (globalStore.terminoSeleccionado !== "all") {
+        url += `&termino=${globalStore.terminoSeleccionado}`;
+      }
+
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
       const data = await response.json();
-
+      
       // --- MAPPINGS (Igual que antes) ---
       setKpis([
-        { title: "Estudiantes", metric: data.cant_estudiantes?.toLocaleString() || "0", subMetric: null, icon: RiUserLine },
+        { title: "Estudiantes", metric: data.cantidad_estudiantes?.toLocaleString() || "0", subMetric: null, icon: RiUserLine },
         { title: "Reprobación", metric: data.total_reprobados?.toLocaleString() || "0", subMetric: `${data.tasa_reprobacion || 0}%`, icon: RiShieldCheckLine },
-        { title: "Graduados", metric: data.total_graduados?.toLocaleString() || "0", subMetric: `${data.tasa_graduados || 0}%`, icon: RiGraduationCapLine },
+        { title: "Graduados", metric: data.total_graduados?.toLocaleString() || "0", subMetric: null, icon: RiGraduationCapLine },
         { title: "Promedio Global", metric: data.promedio_carrera?.toFixed(2) || "0.00", subMetric: null, icon: RiTrophyLine },
       ]);
 
@@ -135,7 +139,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCareerId, selectedPeriod]);
+  }, [globalStore.carreraSeleccionada, globalStore.anioSeleccionado, globalStore.terminoSeleccionado]);
 
   return (
     <div className="flex min-h-screen justify-center bg-zinc-50/50 font-sans">
@@ -153,12 +157,29 @@ export default function Home() {
 
           <div className="flex gap-3">
             {/* SELECT DE CARRERAS */}
-            <Select value={selectedCareerId} onValueChange={setSelectedCareerId}>
+           {
+            userStore.carrera && userStore.carrera !== 0 ? null : (
+               <Select value={globalStore.carreraSeleccionada} onValueChange={globalStore.setCarreraSeleccionada}>
               <SelectTrigger className="w-[240px] bg-white">
                 <SelectValue placeholder="Carrera" />
               </SelectTrigger>
               <SelectContent>
-                {careersList.map((c) => (
+                {globalStore.carreras.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>)
+           }
+
+              {/* SELECT DE CARRERAS */}
+            <Select value={globalStore.anioSeleccionado} onValueChange={globalStore.setAnioSeleccionado}>
+              <SelectTrigger className="w-[240px] bg-white">
+                <SelectValue placeholder="Año" />
+              </SelectTrigger>
+              <SelectContent>
+                {globalStore.anios.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     {c.value}
                   </SelectItem>
@@ -167,12 +188,12 @@ export default function Home() {
             </Select>
 
             {/* SELECT DE PERIODOS (Modificado) */}
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <Select value={globalStore.terminoSeleccionado} onValueChange={globalStore.setTerminoSeleccionado}>
               <SelectTrigger className="w-[180px] bg-white">
-                <SelectValue placeholder="Periodo" />
+                <SelectValue placeholder="Termino" />
               </SelectTrigger>
               <SelectContent>
-                {periodsList.map((p) => (
+                {globalStore.terminos.map((p) => (
                   // KEY y VALUE usan 'p.id' (ej: "PAO 2025-1") porque es único.
                   // 'p.value' ("1S") se repite, así que no sirve como identificador de selección.
                   // CHILDREN usa 'p.id' para MOSTRAR el texto "PAO 2025-1".

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "./ui/button";
+import { useUserStore } from "@/store/userStore";
+import { useGlobalStore } from "@/store/globalStore";
 
 const menuItems = [
   { name: "Estadísticas", path: "/home", icon: "📊" },
@@ -10,6 +13,23 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+
+  const userStore = useUserStore();
+  const globalStore = useGlobalStore();
+
+  const logout = () => {
+    // Limpia el estado global
+    userStore.setUsuario("");
+    userStore.setCarrera("");
+    // Limpia el localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("koopa_user");
+    }
+    // Redirige al login
+    window.location.href = "/";
+  };
+
+
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full fixed left-0 top-0 z-10">
@@ -29,6 +49,7 @@ export default function Sidebar() {
             <Link
               key={item.path}
               href={item.path}
+              onClick={() => globalStore.setPathname(item.path === "/home" ? 'Dashboard académico' : 'Malla Curricular')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm font-medium ${
                 isActive
                   ? "bg-[#0B0E31] text-white shadow-md" // Estilo Activo (Azul oscuro)
@@ -41,7 +62,9 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
       </nav>
+      <Button onClick={logout} variant={'outline'}>Log out</Button>
     </aside>
   );
 }

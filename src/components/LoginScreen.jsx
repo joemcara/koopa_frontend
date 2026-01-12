@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { useUserStore } from "@/store/userStore";
 // Usa una variable de entorno si existe, si no, cae a localhost:8080
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
@@ -14,6 +14,10 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const userStore = useUserStore();
+
+
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -40,6 +44,9 @@ export default function LoginScreen() {
 
       // Guarda info básica en localStorage para el resto de la app
       if (typeof window !== "undefined") {
+        userStore.setUsuario(data.nombreUsuario ?? usuario.trim());
+        userStore.setCarrera(data.codCarrera ?? null);
+
         localStorage.setItem(
           "koopa_user",
           JSON.stringify({
