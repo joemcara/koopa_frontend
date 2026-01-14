@@ -79,7 +79,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       let url = `http://localhost:8080/api/metricas/dashboard?`;
-
+      
       // Filtro de Carrera
       if (globalStore.carreraSeleccionada !== "all") {
         url += `&codCarrera=${globalStore.carreraSeleccionada}`;

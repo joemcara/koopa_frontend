@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { useUserStore } from "@/store/userStore";
 import { useGlobalStore } from "@/store/globalStore";
+import { useEffect, useState } from "react";
 
 const menuItems = [
   { name: "Estadísticas", path: "/home", icon: "📊" },
@@ -13,6 +14,10 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [menuItems, setMenuItems] = useState([
+    { name: "Estadísticas", path: "/home", icon: "📊" },
+    { name: "Malla Curricular", path: "/malla-curricular", icon: "🕸️" },
+  ]);
 
   const userStore = useUserStore();
   const globalStore = useGlobalStore();
@@ -29,6 +34,18 @@ export default function Sidebar() {
     window.location.href = "/";
   };
 
+  useEffect(() => {
+    if (userStore.carrera !== null) {
+
+      setMenuItems(
+        [
+          { name: "Estadísticas", path: "/home", icon: "📊" },
+          { name: "Malla Curricular", path: "/malla-curricular", icon: "🕸️" },
+          { name: "Registrar usuario", path: "/auth/registrar-usuario", icon: "⚙️" }
+        ]
+      )
+    }
+  }, [userStore.carrera]);
 
 
   return (
@@ -62,7 +79,6 @@ export default function Sidebar() {
             </Link>
           );
         })}
-
       </nav>
       <Button onClick={logout} variant={'outline'}>Log out</Button>
     </aside>

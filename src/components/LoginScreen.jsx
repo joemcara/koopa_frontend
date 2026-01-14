@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
+import { useGlobalStore } from "@/store/globalStore";
 // Usa una variable de entorno si existe, si no, cae a localhost:8080
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const userStore = useUserStore();
+  const globalStore = useGlobalStore();
 
 
   
@@ -46,6 +48,7 @@ export default function LoginScreen() {
       if (typeof window !== "undefined") {
         userStore.setUsuario(data.nombreUsuario ?? usuario.trim());
         userStore.setCarrera(data.codCarrera ?? null);
+        globalStore.setCarreraSeleccionada(data.codCarrera === 0 ? 'all' : String(data.codCarrera));
 
         localStorage.setItem(
           "koopa_user",
