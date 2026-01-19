@@ -1,149 +1,199 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
 import SubjectsView from "./SubjectsView";
-
-// 👇 Simula la respuesta del backend
-// En producción aquí harías: const res = await fetch("/api/materias");
-const materiasFromBackend = [
-  {
-    id: 1,
-    codigo: "MATG1045",
-    nombre: "SISTEMAS OPERATIVOS",
-    nivel: "NIVEL 300 I",
-    color: "#22c55e",
-    // datos para el gráfico
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 72, reprobados: 18 },
-      { periodo: "II PAO 2023", inscripciones: 70, reprobados: 22 },
-      { periodo: "I PAO 2024", inscripciones: 85, reprobados: 20 },
-      { periodo: "II PAO 2024", inscripciones: 78, reprobados: 14 },
-      { periodo: "I PAO 2025", inscripciones: 88, reprobados: 30 },
-      { periodo: "II PAO 2025", inscripciones: 65, reprobados: 35 },
-    ],
-    // datos para las tarjetas de abajo
-    stats: {
-      reprobados: 25,
-      reprobadosPorcentaje: 0.2, // 20%
-      aprobaronRequisitos: 27,
-      habilitados: 30,
-      descripcion:
-        "Se estima que al cierre del II PAO 2025, 82 estudiantes se inscribirán en la materia de sistemas operativos en el PAO 2026.",
-      notaPie: "Información del II PAO 2025",
-    },
-  },
-  {
-    id: 2,
-    codigo: "MATG1045",
-    nombre: "CÁLCULO I",
-    nivel: "NIVEL 100 I",
-    color: "#22c55e",
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 90, reprobados: 30 },
-      { periodo: "II PAO 2023", inscripciones: 95, reprobados: 28 },
-      { periodo: "I PAO 2024", inscripciones: 92, reprobados: 25 },
-      { periodo: "II PAO 2024", inscripciones: 88, reprobados: 20 },
-      { periodo: "I PAO 2025", inscripciones: 94, reprobados: 22 },
-      { periodo: "II PAO 2025", inscripciones: 91, reprobados: 21 },
-    ],
-    stats: {
-      reprobados: 30,
-      reprobadosPorcentaje: 0.25,
-      aprobaronRequisitos: 40,
-      habilitados: 35,
-      descripcion: "Tendencia histórica de inscripciones y reprobación en Cálculo I.",
-      notaPie: "Datos históricos 2023–2025",
-    },
-  },
-  {
-    id: 3,
-    codigo: "MATG1045",
-    nombre: "ÁLGEBRA LINEAL",
-    nivel: "NIVEL 100 II",
-    color: "#22c55e",
-    rendimiento: [
-      { periodo: "I PAO 2023", inscripciones: 60, reprobados: 15 },
-      { periodo: "II PAO 2023", inscripciones: 62, reprobados: 14 },
-      { periodo: "I PAO 2024", inscripciones: 65, reprobados: 13 },
-      { periodo: "II PAO 2024", inscripciones: 67, reprobados: 11 },
-      { periodo: "I PAO 2025", inscripciones: 70, reprobados: 10 },
-      { periodo: "II PAO 2025", inscripciones: 72, reprobados: 9 },
-    ],
-    stats: {
-      reprobados: 10,
-      reprobadosPorcentaje: 0.14,
-      aprobaronRequisitos: 50,
-      habilitados: 45,
-      descripcion: "Mejora progresiva en el rendimiento de Álgebra Lineal.",
-      notaPie: "Información consolidada 2023–2025",
-    },
-  },
-];
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useGlobalStore } from "@/store/globalStore";
+import { useUserStore } from "@/store/userStore";
 
 export default function MallaCurricular() {
+  // 1. ESTADO DE FILTROS
+  const [careersList, setCareersList] = useState([]);
+  const [periodsList, setPeriodsList] = useState([]); 
+  
+  // 2. ESTADOS DE SELECCIÓN
+  const [selectedCareerId, setSelectedCareerId] = useState("2");
+  
+  // Inicializamos en "all" para que por defecto muestre todos
+  const [selectedPeriod, setSelectedPeriod] = useState("all"); 
+
+  const [materias, setMaterias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroNombre, setFiltroNombre] = useState("");
+
+  const globalStore = useGlobalStore();
+  const userStore = useUserStore();
+
+  // --- EFECTO 1: CARGAR FILTROS Y TRANSFORMAR DATOS ---
+  // --- 1. CARGAR FILTROS ---
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        if (globalStore.carreras.length !== 0 && globalStore.anios.length !== 0 && globalStore.terminos.length !== 0) return;
+
+        const response = await fetch("http://localhost:8080/api/filtros");
+
+        if (!response.ok) throw new Error("Error cargando filtros");
+        const data = await response.json();
+        
+        globalStore.setCarreras(data.carreras || []);
+        globalStore.setAnios(data.anios || []);
+        globalStore.setTerminos(data.terminos || []);
+
+      } catch (error) {
+        console.error("❌ Error cargando filtros:", error);
+      }
+    };
+    fetchFilters();
+  }, []);
+
+  // --- EFECTO 2: CARGAR MALLA (Lógica de Petición) ---
+  useEffect(() => {
+    const fetchData = async () => {
+      if (globalStore.carreraSeleccionada === "all" || !globalStore.carreraSeleccionada) return;
+
+      setLoading(true); 
+      try {
+        // Base de la URL
+        let url = `http://localhost:8080/api/materias/malla-stats?codCarrera=${globalStore.carreraSeleccionada}`;
+
+        // LÓGICA DE ENVÍO:
+        // Solo agregamos el parámetro si NO es "all" y si existe un valor
+        if (globalStore.anioSeleccionado && globalStore.anioSeleccionado !== "all") {
+          url += `&anio=${globalStore.anioSeleccionado}`;
+        } 
+
+        if (globalStore.terminoSeleccionado && globalStore.terminoSeleccionado !== "all") {
+          url += `&termino=${globalStore.terminoSeleccionado}`;
+        } 
+
+        console.log("📡 Fetching Malla:", url);
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Error al cargar datos");
+        const data = await response.json();
+
+        // Procesamiento de datos (Igual que siempre)
+        const materiasProcesadas = data.map((materia) => {
+          const datosGrafico = materia.rendimiento.map((r) => {
+            const infoPeriodo = materia.stats[r.periodo];
+            return {
+              ...r,
+              nombrePeriodo: infoPeriodo ? infoPeriodo.descripcion : r.periodo,
+            };
+          });
+
+          const periodosKeys = Object.keys(materia.stats).sort((a, b) => Number(a) - Number(b));
+          const ultimoPeriodoKey = periodosKeys[periodosKeys.length - 1];
+          const infoActual = materia.stats[ultimoPeriodoKey] || {};
+
+          return {
+            ...materia,
+            datosGrafico,
+            infoActual
+          };
+        });
+
+        setMaterias(materiasProcesadas);
+      } catch (error) {
+        console.error(error);
+        setMaterias([]); 
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [globalStore.carreraSeleccionada, globalStore.anioSeleccionado, globalStore.terminoSeleccionado]); 
+
+  // Filtrado local y nombre de carrera
+  const materiasFiltradas = useMemo(() => {
+    return materias.filter((m) =>
+      m.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+    );
+  }, [materias, filtroNombre]);
+
+  const currentCareerName = careersList.find(c => String(c.id) === selectedCareerId)?.value || "Carrera";
+
   return (
-    <div className=" justify-center bg-zinc-50 font-sans dark:bg-black">
+    <div className="justify-center bg-zinc-50 font-sans dark:bg-black min-h-screen">
       <main style={{ padding: "24px" }}>
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              alignItems: "center",
-              flexWrap: "nowrap",
-              marginTop: "32px",
-              paddingRight: "24px",
-            }}
-          >
-            <select
-              style={{
-                padding: "10px 12px",
-                borderRadius: "999px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "13px",
-                minWidth: "220px",
-                outline: "none",
-              }}
-            >
-              <option>Seleccionar carrera</option>
-              <option>Computación</option>
-              <option>Telemática</option>
-            </select>
+        
+        <div className="flex gap-4 items-center mt-8 mb-6 pr-6 flex-wrap">
+          
+         {
+            userStore.carrera && userStore.carrera !== 0 ? null : (
+            <Select value={globalStore.carreraSeleccionada} onValueChange={globalStore.setCarreraSeleccionada}>
+              <SelectTrigger className="w-[240px] bg-white">
+                <SelectValue placeholder="Carrera" />
+              </SelectTrigger>
+              <SelectContent>
+                {globalStore.carreras.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>)
+           }
 
-            <div
-              style={{
-                position: "relative",
-                flex: "0 0 400px",
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  left: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "14px",
-                }}
-              >
-                🔍
-              </span>
-              <input
-                type="text"
-                placeholder="Materia"
-                style={{
-                  width: "100%",
-                  padding: "9px 12px 9px 32px",
-                  borderRadius: "999px",
-                  border: "1px solid #e5e7eb",
-                  fontSize: "13px",
-                  outline: "none",
-                }}
-              />
-            </div>
+              {/* SELECT DE CARRERAS */}
+            <Select value={globalStore.anioSeleccionado} onValueChange={globalStore.setAnioSeleccionado}>
+              <SelectTrigger className="w-[240px] bg-white">
+                <SelectValue placeholder="Año" />
+              </SelectTrigger>
+              <SelectContent>
+                {globalStore.anios.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* SELECT DE PERIODOS (Modificado) */}
+            <Select value={globalStore.terminoSeleccionado} onValueChange={globalStore.setTerminoSeleccionado}>
+              <SelectTrigger className="w-[180px] bg-white">
+                <SelectValue placeholder="Termino" />
+              </SelectTrigger>
+              <SelectContent>
+                {globalStore.terminos.map((p) => (
+                  // KEY y VALUE usan 'p.id' (ej: "PAO 2025-1") porque es único.
+                  // 'p.value' ("1S") se repite, así que no sirve como identificador de selección.
+                  // CHILDREN usa 'p.id' para MOSTRAR el texto "PAO 2025-1".
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.id === "all" ? p.value : p.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          {/* Buscador */}
+          <div className="relative flex-1 max-w-[400px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar materia..."
+              value={filtroNombre}
+              onChange={(e) => setFiltroNombre(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-full border border-gray-200 text-sm outline-none focus:border-black transition-colors"
+            />
           </div>
-      <div>
+        </div>
 
-      <SubjectsView subjects={materiasFromBackend}/>
-      </div>
-    </main>
+        {loading ? (
+          <div className="p-10 text-center text-gray-500 animate-pulse">
+            Cargando malla de <span className="font-semibold">{currentCareerName}</span>...
+          </div>
+        ) : (
+          <SubjectsView subjects={materiasFiltradas} />
+        )}
+      </main>
     </div>
   );
 }

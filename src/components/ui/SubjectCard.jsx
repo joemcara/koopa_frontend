@@ -22,11 +22,14 @@ export default function SubjectCard({
       }}
     >
       <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
-        <span>{codigo}</span>
+        <span></span>
         {nivel && <span>{nivel}</span>}
       </div>
       <div className="text-[13px] font-semibold leading-snug text-zinc-900">
         {nombre}
+      </div>
+            <div className="text-[13px] font-semibold leading-snug text-zinc-900">
+        <span>Estudiantes <b>{codigo}</b></span>
       </div>
     </button>
   );
