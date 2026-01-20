@@ -14,6 +14,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function PerformanceChart({ data, mainColor, secondaryColor }) {
   
+  // --- FILTRO: Excluir la categoría "OTROS" ---
+  // Esto evitará que la barra gigante distorsione la escala de las demás carreras
+  const filteredData = data.filter((item) => item.name !== "OTROS");
+
   // Tooltip interno del componente
   const CustomBarTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -55,7 +59,7 @@ export default function PerformanceChart({ data, mainColor, secondaryColor }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               layout="vertical"
-              data={data}
+              data={filteredData} // Usamos la data filtrada aquí
               margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
