@@ -15,8 +15,8 @@ import { useGlobalStore } from "@/store/globalStore";
 
 export default function Home() {
   // --- CONFIGURACIÓN DE COLORES ---
-  const mainColor = "#0B0E31";
-  const secondaryColor = "#2563eb";
+  const mainColor = "#0B0E31";      
+  const secondaryColor = "#2563eb"; 
   const accentColor = "#6366f1";
 
   const userStore = useUserStore();
@@ -32,7 +32,7 @@ export default function Home() {
   // Usaremos el ID como valor del estado para garantizar unicidad (ej: "PAO 2025-1")
   const [selectedCareerId, setSelectedCareerId] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
-
+  
   const [isLoading, setIsLoading] = useState(false);
 
   // Estados de Datos del Dashboard
@@ -62,7 +62,7 @@ export default function Home() {
 
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
-
+        
         globalStore.setCarreras(data.carreras || []);
         globalStore.setAnios(data.anios || []);
         globalStore.setTerminos(data.terminos || []);
@@ -79,7 +79,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       let url = `http://localhost:8080/api/metricas/dashboard?`;
-
+      
       // Filtro de Carrera
       if (globalStore.carreraSeleccionada !== "all") {
         url += `&codCarrera=${globalStore.carreraSeleccionada}`;
@@ -97,7 +97,7 @@ export default function Home() {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
       const data = await response.json();
-
+      
       // --- MAPPINGS (Igual que antes) ---
       setKpis([
         { title: "Estudiantes", metric: data.cantidad_estudiantes?.toLocaleString() || "0", subMetric: null, icon: RiUserLine },
@@ -108,9 +108,9 @@ export default function Home() {
 
       const cantidad_ingresos = data.evolucion_ingresos?.cantidad_ingresos || [];
       const periodosChart = data.evolucion_ingresos?.periodos || [];
-
-      setFinanceData(periodosChart.length > 0
-        ? periodosChart.map((p, index) => ({ periodo: p, valor: cantidad_ingresos[index] || 0 }))
+      
+      setFinanceData(periodosChart.length > 0 
+        ? periodosChart.map((p, index) => ({ periodo: p, valor: cantidad_ingresos[index] || 0 })) 
         : []
       );
 
@@ -144,7 +144,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen justify-center bg-zinc-50/50 font-sans">
       <main className="flex w-full max-w-7xl flex-col gap-6 p-6 md:p-8">
-
+        
         {/* HEADER / FILTROS */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-end sm:items-center mb-2">
           <div>
@@ -157,23 +157,23 @@ export default function Home() {
 
           <div className="flex gap-3">
             {/* SELECT DE CARRERAS */}
-            {
-              userStore.carrera && userStore.carrera !== 0 ? null : (
-                <Select value={globalStore.carreraSeleccionada} onValueChange={globalStore.setCarreraSeleccionada}>
-                  <SelectTrigger className="w-[240px] bg-white">
-                    <SelectValue placeholder="Carrera" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {globalStore.carreras.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>)
-            }
+           {
+            userStore.carrera && userStore.carrera !== 0 ? null : (
+               <Select value={globalStore.carreraSeleccionada} onValueChange={globalStore.setCarreraSeleccionada}>
+              <SelectTrigger className="w-[240px] bg-white">
+                <SelectValue placeholder="Carrera" />
+              </SelectTrigger>
+              <SelectContent>
+                {globalStore.carreras.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>)
+           }
 
-            {/* SELECT DE CARRERAS */}
+              {/* SELECT DE CARRERAS */}
             <Select value={globalStore.anioSeleccionado} onValueChange={globalStore.setAnioSeleccionado}>
               <SelectTrigger className="w-[240px] bg-white">
                 <SelectValue placeholder="Año" />
@@ -208,10 +208,10 @@ export default function Home() {
 
         {/* CONTENIDO PRINCIPAL */}
         <div className={`transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((item, index) => (
-              <KpiCard
+              <KpiCard 
                 key={index}
                 title={item.title}
                 metric={item.metric}
@@ -221,35 +221,30 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="mt-6 w-full">
-            <FinanceChart
-              data={financeData}
-              accentColor={accentColor}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <PerformanceChart 
+              data={performanceData} 
+              mainColor={mainColor} 
+              secondaryColor={secondaryColor} 
+            />
+            <FinanceChart 
+              data={financeData} 
+              accentColor={accentColor} 
             />
           </div>
 
-          {/* --- 2. Gráfico de Barras (PerformanceChart) --- */}
-          {/* Ahora ocupa todo el ancho y va debajo */}
-          <div className="mt-6 w-full">
-            <PerformanceChart
-              data={performanceData}
-              mainColor={mainColor}
-              secondaryColor={secondaryColor}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <SubjectList 
+              title="Materias con mayor reprobación" 
+              data={subjectsData} 
+              barColor={mainColor} 
+            />
+            <SubjectList 
+              title="Materias más pobladas" 
+              data={subjectsDataCant} 
+              barColor={secondaryColor} 
             />
           </div>
-
-          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <SubjectList
-              title="Materias con mayor reprobación"
-              data={subjectsData}
-              barColor={mainColor}
-            />
-            <SubjectList
-              title="Materias más pobladas"
-              data={subjectsDataCant}
-              barColor={secondaryColor}
-            />
-          </div> */}
 
         </div>
       </main>
