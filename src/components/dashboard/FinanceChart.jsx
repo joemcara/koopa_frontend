@@ -25,34 +25,34 @@ export default function FinanceChart({ data, accentColor }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              
+
               <XAxis
                 dataKey="periodo"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 11, fill: "#666" }}
                 tickMargin={10}
-                
+
                 // --- CLAVES PARA QUE SE VEAN ---
                 angle={0}       // Rota el texto vertical
                 textAnchor="end"  // Alinea el final del texto con la rayita
                 height={80}       // <--- IMPORTANTE: Altura reservada para el eje X
                 interval={0}      // <--- IMPORTANTE: Fuerza a mostrar TODOS los labels
               />
-              
+
               <YAxis
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12, fill: "#666" }}
                 tickFormatter={(val) => val}
               />
-              
+
               <Tooltip
                 contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
                 cursor={false}
                 formatter={(val) => [val, "Cantidad"]}
               />
-              
+
               <Area
                 type="monotone"
                 dataKey="valor"

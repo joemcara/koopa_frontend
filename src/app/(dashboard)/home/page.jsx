@@ -15,8 +15,8 @@ import { useGlobalStore } from "@/store/globalStore";
 
 export default function Home() {
   // --- CONFIGURACIÓN DE COLORES ---
-  const mainColor = "#0B0E31";      
-  const secondaryColor = "#2563eb"; 
+  const mainColor = "#0B0E31";
+  const secondaryColor = "#2563eb";
   const accentColor = "#6366f1";
 
   const userStore = useUserStore();
@@ -48,7 +48,7 @@ export default function Home() {
 
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
-        
+
         globalStore.setCarreras(data.carreras || []);
         globalStore.setAnios(data.anios || []);
         globalStore.setTerminos(data.terminos || []);
@@ -65,7 +65,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       let url = `http://localhost:8080/api/metricas/dashboard?`;
-      
+
       // Filtros
       if (globalStore.carreraSeleccionada !== "all") url += `&codCarrera=${globalStore.carreraSeleccionada}`;
       if (globalStore.anioSeleccionado !== "all") url += `&anio=${globalStore.anioSeleccionado}`;
@@ -74,34 +74,34 @@ export default function Home() {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
       const data = await response.json();
-      
+
       // --- MAPPINGS DE KPIS CON TOOLTIPS ---
       setKpis([
-        { 
-          title: "Estudiantes", 
-          metric: data.cantidad_estudiantes?.toLocaleString() || "0", 
-          subMetric: null, 
+        {
+          title: "Estudiantes",
+          metric: data.cantidad_estudiantes?.toLocaleString() || "0",
+          subMetric: null,
           icon: RiUserLine,
           tooltip: "Estudiantes activos matriculados" // Texto solicitado
         },
-        { 
-          title: "Reprobación", 
-          metric: data.total_reprobados?.toLocaleString() || "0", 
-          subMetric: `${data.tasa_reprobacion || 0}%`, 
+        {
+          title: "Reprobación",
+          metric: data.total_reprobados?.toLocaleString() || "0",
+          subMetric: `${data.tasa_reprobacion || 0}%`,
           icon: RiShieldCheckLine,
           tooltip: "Reprobado de los activos" // Texto solicitado
         },
-        { 
-          title: "Graduados", 
-          metric: data.total_graduados?.toLocaleString() || "0", 
-          subMetric: null, 
+        {
+          title: "Graduados",
+          metric: data.total_graduados?.toLocaleString() || "0",
+          subMetric: null,
           icon: RiGraduationCapLine,
           tooltip: "Graduados por año" // Texto solicitado
         },
-        { 
-          title: "Promedio Global", 
-          metric: data.promedio_carrera?.toFixed(2) || "0.00", 
-          subMetric: null, 
+        {
+          title: "Promedio Global",
+          metric: data.promedio_carrera?.toFixed(2) || "0.00",
+          subMetric: null,
           icon: RiTrophyLine,
           tooltip: "Promedio global de la carrera en ese término" // Texto solicitado
         },
@@ -173,7 +173,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen justify-center bg-zinc-50/50 font-sans">
       <main className="flex w-full max-w-7xl flex-col gap-6 p-6 md:p-8">
-        
+
         {/* HEADER / FILTROS */}
         <div className="flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-end mb-2">
           <div className="pb-1">
@@ -221,17 +221,17 @@ export default function Home() {
 
         {/* CONTENIDO PRINCIPAL */}
         <div className={`transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-          
+
           {/* Tarjetas KPI con Tooltips */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((item, index) => (
-              <KpiCard 
+              <KpiCard
                 key={index}
                 title={item.title}
                 metric={item.metric}
                 subMetric={item.subMetric}
                 icon={item.icon}
-                tooltip={item.tooltip} 
+                tooltip={item.tooltip}
               />
             ))}
           </div>

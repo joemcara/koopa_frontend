@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PerformanceChart({ data, mainColor, secondaryColor }) {
-  
+
   // --- FILTRO: Excluir la categoría "OTROS" ---
   // Esto evitará que la barra gigante distorsione la escala de las demás carreras
   const filteredData = data.filter((item) => item.name !== "OTROS");
