@@ -4,9 +4,9 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
 import { useGlobalStore } from "@/store/globalStore";
-// Usa una variable de entorno si existe, si no, cae a localhost:8080
+// Usa una variable de entorno si existe, si no, cae a localhost:8081
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
 
 export default function LoginScreen() {
   const router = useRouter();

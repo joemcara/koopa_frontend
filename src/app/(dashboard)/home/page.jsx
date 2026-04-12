@@ -44,7 +44,7 @@ export default function Home() {
       try {
         if (globalStore.carreras.length !== 0 && globalStore.anios.length !== 0 && globalStore.terminos.length !== 0) return;
 
-        const response = await fetch("http://localhost:8080/api/filtros");
+        const response = await fetch("http://localhost:8081/api/filtros");
 
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
@@ -64,7 +64,7 @@ export default function Home() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      let url = `http://localhost:8080/api/metricas/dashboard?`;
+      let url = `http://localhost:8081/api/metricas/dashboard?`;
 
       // Filtros
       if (globalStore.carreraSeleccionada !== "all") url += `&codCarrera=${globalStore.carreraSeleccionada}`;

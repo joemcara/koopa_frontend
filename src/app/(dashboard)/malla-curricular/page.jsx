@@ -37,7 +37,7 @@ export default function MallaCurricular() {
            return;
         }
 
-        const response = await fetch("http://localhost:8080/api/filtros");
+        const response = await fetch("http://localhost:8081/api/filtros");
 
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
@@ -70,7 +70,7 @@ export default function MallaCurricular() {
 
       setLoading(true); 
       try {
-        let url = `http://localhost:8080/api/materias/malla-stats?codCarrera=${globalStore.carreraSeleccionada}`;
+        let url = `http://localhost:8081/api/materias/malla-stats?codCarrera=${globalStore.carreraSeleccionada}`;
 
         if (globalStore.anioSeleccionado && globalStore.anioSeleccionado !== "all") {
           url += `&anio=${globalStore.anioSeleccionado}`;

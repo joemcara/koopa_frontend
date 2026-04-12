@@ -41,7 +41,7 @@ export default function Sidebar() {
         [
           { name: "Estadísticas", path: "/home", icon: "📊" },
           { name: "Malla Curricular", path: "/malla-curricular", icon: "🕸️" },
-          { name: "Registrar usuario", path: "/auth/registrar-usuario", icon: "⚙️" }
+          // { name: "Registrar usuario", path: "/auth/registrar-usuario", icon: "⚙️" }
         ]
       )
     }
