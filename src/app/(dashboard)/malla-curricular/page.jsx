@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useGlobalStore } from "@/store/globalStore";
 import { useUserStore } from "@/store/userStore";
+import { API_BASE_URL } from "@/config/api";
 
 export default function MallaCurricular() {
   // 1. ESTADO DE FILTROS
@@ -37,7 +38,7 @@ export default function MallaCurricular() {
            return;
         }
 
-        const response = await fetch("http://localhost:8081/api/filtros");
+        const response = await fetch(`${API_BASE_URL}/api/filtros`);
 
         if (!response.ok) throw new Error("Error cargando filtros");
         const data = await response.json();
@@ -70,7 +71,7 @@ export default function MallaCurricular() {
 
       setLoading(true); 
       try {
-        let url = `http://localhost:8081/api/materias/malla-stats?codCarrera=${globalStore.carreraSeleccionada}`;
+        let url = `${API_BASE_URL}/api/materias/malla-stats?codCarrera=${globalStore.carreraSeleccionada}`;
 
         if (globalStore.anioSeleccionado && globalStore.anioSeleccionado !== "all") {
           url += `&anio=${globalStore.anioSeleccionado}`;
